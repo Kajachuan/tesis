@@ -20,4 +20,4 @@ class HierarchicalModel(nn.Module):
         mask = self.embedding(data)
 
         estimates = mix.unsqueeze(-1) * mask
-        return estimates
+        return mask, estimates
