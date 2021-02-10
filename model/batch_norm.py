@@ -5,13 +5,13 @@ class BatchNorm(nn.Module):
     """
     Capa de normalización por lote (batch)
     """
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, num_features: int, **kwargs) -> None:
         """
         Argumentos:
             **kwargs {dict} -- Argumentos de BatchNorm1d
         """
         super(BatchNorm, self).__init__()
-        self.batch_norm = nn.BatchNorm1d(**kwargs)
+        self.batch_norm = nn.BatchNorm1d(num_features, **kwargs)
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
@@ -25,7 +25,6 @@ class BatchNorm(nn.Module):
 
         data = data.transpose(1, 2) # Dim: (n_batch, n_bins, n_channels, n_frames)
         shape = data.shape
-        new_shape = ()
 
         data = data.reshape(shape[0], shape[1], -1) # Dim: (n_batch, n_bins, *)
         data = self.batch_norm(data) # Dim: (n_batch, n_bins, *)
