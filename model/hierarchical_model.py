@@ -9,7 +9,7 @@ class HierarchicalModel(nn.Module):
     """
     Modelo jerárquico para separación de instrumentos
     """
-    def __init__(self, n_fft: int, hop: int, n_channels: int, hidden_size: int,
+    def __init__(self, n_fft: int = 4096, hop: int = 1024, n_channels: int, hidden_size: int,
                  num_layers: int, dropout: float, n_sources: int) -> None:
         """
         Argumentos:
