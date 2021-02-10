@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 class BLSTM(nn.Module):
@@ -23,7 +24,7 @@ class BLSTM(nn.Module):
         #     elif 'weight' in name:
         #         nn.init.xavier_normal_(param)
 
-    def forward(self, data: torch.Tensor):
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
         Argumentos:
             data -- Entrada de dimensión (n_batch, n_channels, n_bins, n_frames)
