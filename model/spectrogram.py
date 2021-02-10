@@ -27,7 +27,7 @@ class Spectrogram(nn.Module):
             signal -- Señal de audio de dimensión (n_batch, n_channels, n_timesteps)
 
         Retorna:
-            Espectrograma de dimensión ?
+            Espectrograma de dimensión (n_batch, n_channels, n_bins, n_frames)
         """
         n_batch, n_channels, n_timesteps = signal.size()
 
