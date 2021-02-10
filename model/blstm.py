@@ -4,16 +4,16 @@ class BLSTM(nn.Module):
     """
     Crea una pila de capas BLSTM
     """
-    def __init__(self, num_features: int, hidden_size: int, num_layers: int, dropout: float):
+    def __init__(self, input_size: int, hidden_size: int, num_layers: int, dropout: float):
         """
         Argumentos:
-            num_features -- Número de features
+            input_size -- Tamaño de la entrada
             hidden_size -- Cantidad de unidades en cada capa (tamaño de las capas ocultas)
             num_layers -- Número de capas BLSTM
             dropout -- Dropout entre capas
         """
         super(BLSTM, self).__init__()
-        self.blstm = nn.LSTM(num_features, hidden_size, num_layers, batch_first=True,
+        self.blstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True,
                              dropout=dropout, bidirectional=True)
 
         # Inicialización
