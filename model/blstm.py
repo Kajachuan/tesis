@@ -5,7 +5,7 @@ class BLSTM(nn.Module):
     """
     Crea una pila de capas BLSTM
     """
-    def __init__(self, input_size: int, hidden_size: int, num_layers: int, dropout: float):
+    def __init__(self, input_size: int, hidden_size: int, num_layers: int, dropout: float) -> None:
         """
         Argumentos:
             input_size -- Tamaño de la entrada
