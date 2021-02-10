@@ -9,8 +9,8 @@ class HierarchicalModel(nn.Module):
     """
     Modelo jerárquico para separación de instrumentos
     """
-    def __init__(self, n_fft: int = 4096, hop: int = 1024, n_channels: int, hidden_size: int,
-                 num_layers: int, dropout: float, n_sources: int) -> None:
+    def __init__(self, n_channels: int, hidden_size: int, num_layers: int, dropout: float,
+                 n_sources: int, n_fft: int = 4096, hop: int = 1024) -> None:
         """
         Argumentos:
             n_fft -- Tamaño de la fft para el espectrograma
