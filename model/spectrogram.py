@@ -8,7 +8,7 @@ class Spectrogram(nn.Module):
     def __init__(self, n_fft: int = 4096, hop: int = 1024, db_conversion: bool = True) -> None:
         """
         Argumentos:
-            n_fft -- Número de bins de frecuencia
+            n_fft -- Tamaño de la FFT
             hop -- Tamaño del hop
             db_conversion -- Si el espectrograma debe estar en dB
         """

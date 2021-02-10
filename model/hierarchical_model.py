@@ -1,20 +1,45 @@
-from model.db_spectrogram import DBSpectrogram
+import torch
+import torch.nn as nn
+from model.spectrogram import Spectrogram
 from model.batch_norm import BatchNorm
 from model.blstm import BLSTM
 from model.embedding import Embedding
 
 class HierarchicalModel(nn.Module):
-    def __init__(self, num_features, num_audio_channels, hidden_size, num_layers, dropout, num_sources):
+    """
+    Modelo jerárquico para separación de instrumentos
+    """
+    def __init__(self, n_fft: int, hop: int, n_channels: int, hidden_size: int,
+                 num_layers: int, dropout: float, n_sources: int) -> None:
+        """
+        Argumentos:
+            n_fft -- Tamaño de la fft para el espectrograma
+            hop -- Tamaño del hop del espectrograma
+            n_channels -- Número de canales de audio
+            hidden_size -- Cantidad de unidades en cada capa BLSTM
+            num_layers -- Cantidad de capas BLSTM
+            dropout -- Dropout de las capas BLSTM
+            n_sources -- Número de instrumentos
+        """
         super(HierarchicalModel, self).__init__()
-        self.db_spectrogram = DBSpectrogram()
-        self.batch_norm = BatchNorm(num_features)
-        self.blstm = BLSTM(num_features * num_audio_channels, hidden_size, num_layers, dropout)
-        self.embedding = Embedding(num_features, hidden_size * 2, num_sources, num_audio_channels)
 
-    def forward(self, data):
+        n_bins = n_fft // 2 + 1
+        self.spectrogram = Spectrogram(n_fft, hop)
+        self.batch_norm = BatchNorm(n_bins)
+        self.blstm = BLSTM(n_channels * n_bins, hidden_size, num_layers, dropout)
+        self.embedding = Embedding(n_bins, 2 * hidden_size, n_sources, n_channels)
+
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
+        """
+        Argumentos:
+            data -- Audio de dimensión (n_batch, n_channels, n_timesteps)
+
+        Retorna:
+            Máscara, Estimación
+        """
         mix = data
 
-        data = self.db_spectrogram(mix)
+        data = self.spectrogram(mix)
         data = self.batch_norm(data)
         data = self.blstm(data)
         mask = self.embedding(data)
