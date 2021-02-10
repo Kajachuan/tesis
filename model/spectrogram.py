@@ -36,7 +36,7 @@ class Spectrogram(nn.Module):
         # Calculo la STFT
         stft = torch.stft(signal, n_fft=self.n_fft, hop_length=self.hop,
                           window=self.window, center=False, normalized=False,
-                          onesided=True, pad_mode='reflect') # Dim: (n_batch, N, T, 2)
+                          onesided=True, pad_mode='reflect', return_complex=False) # Dim: (n_batch, N, T, 2)
 
         stft = stft.contiguous().view(n_batch, n_channels, self.n_fft // 2 + 1, -1, 2)
         # Dim: (n_batch, n_channels, n_bins, n_frames, 2)
