@@ -39,7 +39,7 @@ class Spectrogram(nn.Module):
                           onesided=True, pad_mode='reflect', return_complex=False) # Dim: (n_batch, N, T, 2)
 
         stft = stft.contiguous().view(n_batch, n_channels, self.n_fft // 2 + 1, -1, 2)
-        # Dim: (n_batch, n_channels, n_bins, n_frames, 2)
+               # Dim: (n_batch, n_channels, n_bins, n_frames, 2)
 
         stft = stft.pow(2).sum(-1) # Dim: (n_batch, n_channels, n_bins, n_frames)
         if self.db_conversion:

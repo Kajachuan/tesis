@@ -30,7 +30,7 @@ class BLSTM(nn.Module):
             data -- Entrada de dimensión (n_batch, n_channels, n_bins, n_frames)
 
         Retorna:
-            torch.Tensor -- Salida de dimensión (n_batch, n_frames, hidden_size)
+            Salida de dimensión (n_batch, n_frames, hidden_size)
         """
         data = data.transpose(1, 3) # Dim: (n_batch, n_frames, n_bins, n_channels)
         shape = data.shape

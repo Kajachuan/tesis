@@ -4,59 +4,39 @@ import torch.nn as nn
 class Embedding(nn.Module):
     """
     Módulo de inferencia de la máscara
-
-    Argumentos:
-        num_features {int} -- Número de features a ser mapeados por cada frame
-        hidden_size {int} -- Tamaño de la salida del BLSTM
-        embedding_size {int} -- Dimensionalidad del embedding
-        num_audio_channels {int} -- Número de canales del audio
     """
-    def __init__(self, num_features, hidden_size, embedding_size, num_audio_channels=1):
-        super(Embedding, self).__init__()
-        self.linear = nn.Linear(hidden_size, num_features * num_audio_channels * embedding_size)
-        self.num_features = num_features
-        self.num_audio_channels = num_audio_channels
-        self.embedding_size = embedding_size
-        self.dim_to_embed = [-1]
-
-        # Inicialización
-        for name, param in self.linear.named_parameters():
-            if 'bias' in name:
-                nn.init.constant_(param, 0.0)
-            elif 'weight' in name:
-                nn.init.xavier_normal_(param) # Revisar si se podría cambiar
-
-    def forward(self, data): # Revisar esto
+    def __init__(self, n_bins: int, hidden_size: int, n_sources: int, n_channels: int) -> None:
         """
         Argumentos:
-            data {torch.Tensor} -- Salida del BLSTM de dimensión (B, T, H)
+            n_bins -- Número de bins de frecuencia
+            hidden_size -- Número de unidades en cada capa BLSTM (anterior)
+            n_sources -- Cantidad de instrumentos
+            n_channels -- Número de canales del audio
+        """
+        super(Embedding, self).__init__()
+        self.linear = nn.Linear(hidden_size, n_bins * n_channels * n_sources)
+        self.n_bins = n_bins
+        self.n_channels = n_channels
+        self.n_sources = n_sources
+
+        # Inicialización
+        # for name, param in self.linear.named_parameters():
+        #     if 'bias' in name:
+        #         nn.init.constant_(param, 0.0)
+        #     elif 'weight' in name:
+        #         nn.init.xavier_normal_(param)
+
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
+        """
+        Argumentos:
+            data -- Entrada de dimensión (n_batch, n_frames, hidden_size)
 
         Retorna:
-            torch.Tensor -- Una máscara de dimensión (B, T, NF, C, S)
-
-        Referencia:
-            B: Tamaño del lote (batch)
-            T: Número de bins de tiempo
-            NF: Número de features
-            C: Número de canales (mono, stereo, etc.)
-            S: Número de fuentes (instrumentos)
+            Una máscara de dimensión (n_batch, n_frames, n_bins, n_channels, n_sources)
         """
-        shape = list(data.shape)
-        _dims = []
-        for _dim in self.dim_to_embed:
-            if _dim == -1:
-                _dim = len(shape) - 1
-            data = data.transpose(_dim, -1)
-            _dims.append(_dim)
-
-        shape = [v for i, v in enumerate(shape) if i not in _dims]
-
-        shape = tuple(shape)
-        data = data.reshape(shape + (-1,))
-        data = self.linear(data)
-
-        shape = shape + (self.num_features, self.num_audio_channels, self.embedding_size,)
-        data = data.reshape(shape)
-
+        shape = data.shape
+        data = self.linear(data) # Dim: (n_batch, n_frames, n_bins * n_channels * n_sources)
+        data = data.reshape(shape[0], shape[1], self.n_bins, self.n_channels, self.n_sources)
+               # Dim: (n_batch, n_frames, n_bins, n_channels, n_sources)
         data = torch.sigmoid(data)
         return data
