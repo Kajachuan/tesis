@@ -17,13 +17,6 @@ class BLSTM(nn.Module):
         self.blstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True,
                              dropout=dropout, bidirectional=True)
 
-        # Inicialización
-        # for name, param in self.blstm.named_parameters():
-        #     if 'bias' in name:
-        #         nn.init.constant_(param, 0.0)
-        #     elif 'weight' in name:
-        #         nn.init.xavier_normal_(param)
-
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
         Argumentos:

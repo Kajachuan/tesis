@@ -16,7 +16,7 @@ class BatchNorm(nn.Module):
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
         Argumentos:
-            data {torch.Tensor} -- Entrada que será normalizada de dimensión
+            data {torch.Tensor} -- Magnitud de STFT será normalizada de dimensión
                                    (n_batch, n_channels, n_bins, n_frames)
 
         Retorna:
