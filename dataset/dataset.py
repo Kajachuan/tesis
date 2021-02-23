@@ -21,6 +21,7 @@ class MUSDB18Dataset(Dataset):
         """
         super(MUSDB18Dataset, self).__init__()
         self.sample_rate = 44100 # Por ahora no se usa
+        self.split = split
         self.target = target
         self.duration = duration
         self.divisions = divisions
