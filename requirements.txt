@@ -1,0 +1,4 @@
+torch==1.7.0+cu101
+tqdm==4.41.1
+musdb==0.4.0
+torchaudio==0.7.2
