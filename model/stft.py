@@ -50,7 +50,7 @@ class STFT(nn.Module):
             real[real.abs() < eps] = eps
             imag[imag.abs() < eps] = eps
 
-            mag = torch.sqrt(real ** 2 + imag ** 2)
+            mag = 10 * torch.log10(torch.sqrt(real ** 2 + imag ** 2))
             phase = torch.atan2(imag, real)
 
             data = torch.stack((mag, phase), dim=-1)
