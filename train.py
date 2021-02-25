@@ -31,7 +31,7 @@ def valid(network, optimizer, valid_loader, device):
     count = 0
     network.eval()
     with torch.no_grad():
-        for x, y in valid_sampler:
+        for x, y in valid_loader:
             x, y = x.to(device), y.to(device)
             m, y_hat = network(x)
             loss = mse_loss(y_hat, y)
