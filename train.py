@@ -53,6 +53,7 @@ def main():
     parser.add_argument("--layers", type=int, default=2, help="Cantidad de capas BLSTM")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
     parser.add_argument("--nfft", type=int, default=4096, help="Tamaño de la FFT del STFT")
+    parser.add_argument("--output", type=str, help="Directorio de salida")
     parser.add_argument("--root", type=str, help="Ruta del dataset")
     parser.add_argument("--samples", type=int, default=1, help="Muestras por cancion")
     parser.add_argument("--target", type=str, default="vocals", help="Instrumento a separar")
@@ -116,8 +117,8 @@ def main():
 
         if valid_loss < best_loss:
             best_loss = valid_loss
-            torch.save(state, f"{args.checkpoint}/best_checkpoint")
-        torch.save(state, f"{args.checkpoint}/last_checkpoint")
+            torch.save(state, f"{args.output}/best_checkpoint")
+        torch.save(state, f"{args.output}/last_checkpoint")
 
 if __name__ == '__main__':
     main()
