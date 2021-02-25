@@ -40,7 +40,7 @@ class Model(nn.Module):
         """
 
         stft = self.stft(data)
-        mag, phase = stft[0, ...], stft[1, ...]
+        mag, phase = stft[..., 0], stft[..., 1]
         data = self.batch_norm(mag)
         data = self.blstm(data)
         mask = self.mask(data)
@@ -48,9 +48,6 @@ class Model(nn.Module):
         estim_mag = mag * mask
         estim_stft = torch.stack((estim_mag * torch.cos(phase),
                                   estim_mag * torch.sin(phase)), dim=-1)
-        n_batch, n_channels, n_bins, n_frames, _ = estim_stft.size()
-        estim_stft = estim_stft.reshape(n_batch * n_channels, n_bins, n_frames, -1)
-        estimates = torch.istft(estim_stft, n_fft=self.n_fft, hop_length=self.hop, center=True,
-                                normalized=False, onesided=True, return_complex=False)
+        estimates = self.stft(estim_stft, inverse=True)
 
         return mask, estimates

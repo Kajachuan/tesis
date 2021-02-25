@@ -19,35 +19,51 @@ class STFT(nn.Module):
         # Ventana de Hann
         self.window = nn.Parameter(torch.hann_window(n_fft), requires_grad=False)
 
-    def forward(self, signal: torch.Tensor) -> torch.Tensor:
+    def forward(self, data: torch.Tensor, inverse: bool = False) -> torch.Tensor:
         """
         Argumentos:
-            signal -- Señal de audio de dimensión (n_batch, n_channels, n_timesteps)
-
+            data -- Señal de audio de dimensión (n_batch, n_channels, n_timesteps) si inverse=False
+                    STFT de dimensión (n_batch, n_channels, n_bins, n_frames, 2) si inverse=True
+            inverse -- True si se calcula la ISTFT
         Retorna:
-            STFT de dimensión (mag + phase, n_batch, n_channels, n_bins, n_frames)
+            STFT de dimensión (n_batch, n_channels, n_bins, n_frames, 2) si inverse=False
+            Señal de audio de dimensión (n_batch, n_channels, n_timesteps) si inverse=True
         """
-        n_batch, n_channels, n_timesteps = signal.size()
+        if not inverse:
+            n_batch, n_channels, self.length = data.size()
+            data = data.reshape(n_batch * n_channels, -1) # Dim: (n_batch * n_channels, n_timesteps)
 
-        signal = signal.reshape(n_batch * n_channels, -1) # Dim: (n_batch * n_channels, n_timesteps)
+            # Calcula la STFT
+            data = torch.stft(data, n_fft=self.n_fft, hop_length=self.hop,
+                              window=self.window, center=True, normalized=False,
+                              onesided=True, pad_mode='reflect', return_complex=False)
+                   # Dim: (n_batch * n_channels, n_bins, n_frames, 2)
 
-        # Calcula la STFT
-        signal = torch.stft(signal, n_fft=self.n_fft, hop_length=self.hop,
-                            window=self.window, center=True, normalized=False,
-                            onesided=True, pad_mode='reflect', return_complex=False)
-                 # Dim: (n_batch * n_channels, n_bins, n_frames, 2)
+            data *= torch.sqrt(1.0 / (self.window.sum() ** 2))
 
-        signal *= torch.sqrt(1.0 / (self.window.sum() ** 2))
+            _, n_bins, n_frames, __ = data.size()
+            data = data.reshape(n_batch, n_channels, n_bins, n_frames, 2)
+                     # Dim: (n_batch, n_channels, n_bins, n_frames, 2)
+            real, imag = data[..., 0], data[..., 1]
 
-        _, n_bins, n_frames, __ = signal.size()
-        signal = signal.reshape(n_batch, n_channels, n_bins, n_frames, 2) # Dim: (n_batch, n_channels, n_bins, n_frames, 2)
-        real, imag = signal[..., 0], signal[..., 1]
+            eps = 1e-8
+            real[real.abs() < eps] = eps
+            imag[imag.abs() < eps] = eps
 
-        eps = 1e-8
-        real[real.abs() < eps] = eps
-        imag[imag.abs() < eps] = eps
+            mag = torch.sqrt(real ** 2 + imag ** 2)
+            phase = torch.atan2(imag, real)
 
-        mag = torch.sqrt(real ** 2 + imag ** 2)
-        phase = torch.atan2(imag, real)
+            data = torch.stack((mag, phase), dim=-1)
+            return data
+        else:
+            n_batch, n_channels, n_bins, n_frames, _ = data.size()
+            data = data.reshape(n_batch * n_channels, n_bins, n_frames, -1)
+                  # Dim: (n_batch * n_channels, n_bins, n_frames, 2)
 
-        return torch.stack((mag, phase))
+            # Calculo la ISTFT
+            data = torch.istft(data, n_fft=self.n_fft, hop_length=self.hop,
+                               center=True, normalized=False, onesided=True,
+                               return_complex=False, length=self.length)
+                   # Dim: (n_batch * n_channels, n_timesteps)
+            data = data.reshape(n_batch, n_channels, -1) # Dim: (n_batch, n_channels, n_timesteps)
+            return data
