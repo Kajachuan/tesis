@@ -5,8 +5,39 @@ import torchaudio
 import tqdm
 from torch.optim import Adam
 from torch.utils.data import DataLoader
+from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
 from model.model import Model
+
+def train(network, optimizer, train_loader, device):
+    batch_loss = 0
+    count = 0
+    network.train()
+    pbar = tqdm.tqdm(train_loader)
+    for x, y in pbar:
+        pbar.set_description("Entrenando batch")
+        x, y = x.to(device), y.to(device)
+        optimizer.zero_grad()
+        m, y_hat = network(x)
+        loss = mse_loss(y_hat, y)
+        loss.backward()
+        optimizer.step()
+        batch_loss += loss.item() * y.size(0)
+        count += y.size(0)
+    return batch_loss / count
+
+def valid(network, optimizer, valid_loader, device):
+    batch_loss = 0
+    count = 0
+    network.eval()
+    with torch.no_grad():
+        for x, y in valid_sampler:
+            x, y = x.to(device), y.to(device)
+            m, y_hat = network(x)
+            loss = mse_loss(y_hat, y)
+            batch_loss += loss.item() * y.size(0)
+            count += y.size(0)
+        return batch_loss / count
 
 def main():
     parser = argparse.ArgumentParser()
@@ -56,17 +87,19 @@ def main():
         train_losses = state["train_losses"]
         valid_losses = state["valid_losses"]
         initial_epoch = state["epoch"] + 1
+        best_loss = state["best_loss"]
 
     else:
         train_losses = []
         valid_losses = []
         initial_epoch = 1
+        best_loss = float("inf")
 
     t = tqdm.trange(initial_epoch, args.epochs + 1)
     for epoch in t:
-        t.set_description(f"Época {epoch}")
-        train_loss = train() # Implementar
-        valid_loss = valid() # Implementar
+        t.set_description(f"Entrenando época {epoch}")
+        train_loss = train(network, optimizer, train_loader, device)
+        valid_loss = valid(network, optimizer, valid_loader, device)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
 
@@ -74,13 +107,16 @@ def main():
 
         state = {
             "epoch": epoch,
+            "best_loss": best_loss,
             "state_dict": network.state_dict(),
             "optimizer": optimizer.state_dict(),
             "train_losses": train_losses,
             "valid_losses", valid_losses
         }
 
-        # Falta guardar el mejor
+        if valid_loss < best_loss:
+            best_loss = valid_loss
+            torch.save(state, f"{args.checkpoint}/best_checkpoint")
         torch.save(state, f"{args.checkpoint}/last_checkpoint")
 
 if __name__ == '__main__':
