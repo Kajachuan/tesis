@@ -31,7 +31,9 @@ def valid(network, optimizer, valid_loader, device):
     count = 0
     network.eval()
     with torch.no_grad():
-        for x, y in valid_loader:
+        pbar = tqdm.tqdm(valid_loader)
+        for x, y in pbar:
+            pbar.set_description("Validando")
             x, y = x.to(device), y.to(device)
             m, y_hat = network(x)
             loss = mse_loss(y_hat, y)
@@ -98,7 +100,7 @@ def main():
 
     t = tqdm.trange(initial_epoch, args.epochs + 1)
     for epoch in t:
-        t.set_description(f"Entrenando época {epoch}")
+        t.set_description(f"Entrenando época")
         train_loss = train(network, optimizer, train_loader, device)
         valid_loss = valid(network, optimizer, valid_loader, device)
         train_losses.append(train_loss)
