@@ -111,7 +111,7 @@ def main():
             "state_dict": network.state_dict(),
             "optimizer": optimizer.state_dict(),
             "train_losses": train_losses,
-            "valid_losses", valid_losses
+            "valid_losses": valid_losses
         }
 
         if valid_loss < best_loss:
