@@ -61,6 +61,8 @@ def main():
     parser.add_argument("--target", type=str, default="vocals", help="Instrumento a separar")
     args = parser.parse_args()
 
+    model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft, args.hop]
+
     use_cuda = torch.cuda.is_available()
     print("GPU disponible:", use_cuda)
     device = torch.device("cuda:0" if use_cuda else "cpu")
@@ -78,12 +80,11 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     valid_loader = DataLoader(valid_dataset, batch_size=1)
 
-    network = Model(n_channels=args.channels, hidden_size=args.hidden_size, num_layers=args.layers,
-                    dropout=args.dropout, n_fft=args.nfft, hop=args.hop).to(device)
+    network = Model(*model_args).to(device)
     optimizer = Adam(network.parameters(), lr=args.learning_rate)
 
     if args.checkpoint:
-        state = torch.load(f"{args.checkpoint}/last_checkpoint", map_location=device)
+        state = torch.load(f"{args.checkpoint}/{args.target}/last_checkpoint", map_location=device)
         network.load_state_dict(state["state_dict"])
         optimizer.load_state_dict(state["optimizer"])
 
@@ -91,7 +92,6 @@ def main():
         valid_losses = state["valid_losses"]
         initial_epoch = state["epoch"] + 1
         best_loss = state["best_loss"]
-
     else:
         train_losses = []
         valid_losses = []
@@ -109,6 +109,7 @@ def main():
         t.set_postfix(train_loss=train_loss, valid_loss=valid_loss)
 
         state = {
+            "args": model_args
             "epoch": epoch,
             "best_loss": best_loss,
             "state_dict": network.state_dict(),
@@ -119,8 +120,8 @@ def main():
 
         if valid_loss < best_loss:
             best_loss = valid_loss
-            torch.save(state, f"{args.output}/best_checkpoint")
-        torch.save(state, f"{args.output}/last_checkpoint")
+            torch.save(state, f"{args.output}/{args.target}/best_checkpoint")
+        torch.save(state, f"{args.output}/{args.target}/last_checkpoint")
 
 if __name__ == '__main__':
     main()

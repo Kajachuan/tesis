@@ -50,7 +50,7 @@ class STFT(nn.Module):
             real[real.abs() < eps] = eps
             imag[imag.abs() < eps] = eps
 
-            mag = 10 * torch.log10(torch.sqrt(real ** 2 + imag ** 2))
+            mag = torch.sqrt(real ** 2 + imag ** 2)
             phase = torch.atan2(imag, real)
 
             data = torch.stack((mag, phase), dim=-1)
@@ -58,7 +58,7 @@ class STFT(nn.Module):
         else:
             n_batch, n_channels, n_bins, n_frames, _ = data.size()
             data = data.reshape(n_batch * n_channels, n_bins, n_frames, -1)
-                  # Dim: (n_batch * n_channels, n_bins, n_frames, 2)
+                   # Dim: (n_batch * n_channels, n_bins, n_frames, 2)
 
             # Calculo la ISTFT
             data = torch.istft(data, n_fft=self.n_fft, hop_length=self.hop,

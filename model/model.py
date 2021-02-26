@@ -41,7 +41,8 @@ class Model(nn.Module):
 
         stft = self.stft(data)
         mag, phase = stft[..., 0], stft[..., 1]
-        data = self.batch_norm(mag)
+        mag_db = 10 * torch.log10(mag)
+        data = self.batch_norm(mag_db)
         data = self.blstm(data)
         mask = self.mask(data)
 
