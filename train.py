@@ -109,7 +109,7 @@ def main():
         t.set_postfix(train_loss=train_loss, valid_loss=valid_loss)
 
         state = {
-            "args": model_args
+            "args": model_args,
             "epoch": epoch,
             "best_loss": best_loss,
             "state_dict": network.state_dict(),
