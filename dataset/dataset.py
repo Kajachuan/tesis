@@ -44,9 +44,11 @@ class MUSDB18Dataset(Dataset):
         x_audio = track.audio.T
         y_audio = track.targets[self.target].audio.T
         x = torch.as_tensor([np.abs(librosa.stft(x_audio[0], n_fft=self.n_fft, hop_length=self.hop)),
-                             np.abs(librosa.stft(x_audio[1], n_fft=self.n_fft, hop_length=self.hop))])
+                             np.abs(librosa.stft(x_audio[1], n_fft=self.n_fft, hop_length=self.hop))],
+                             dtype=torch.float)
         y = torch.as_tensor([np.abs(librosa.stft(y_audio[0], n_fft=self.n_fft, hop_length=self.hop)),
-                             np.abs(librosa.stft(y_audio[1], n_fft=self.n_fft, hop_length=self.hop))])
+                             np.abs(librosa.stft(y_audio[1], n_fft=self.n_fft, hop_length=self.hop))],
+                             dtype=torch.float)
         return x, y
 
     def __len__(self) -> int:
