@@ -41,6 +41,6 @@ class Model(nn.Module):
         data = self.blstm(data)
         mask = self.mask(data)
 
-        estimates = mag * mask
+        estimates = mix * mask
 
         return mask, estimates
