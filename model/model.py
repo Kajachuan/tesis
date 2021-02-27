@@ -47,7 +47,8 @@ class Model(nn.Module):
         mask = self.mask(data)
 
         estim_mag = mag * mask
-        estim_stft = estim_mag * torch.cos(phase) + 1j * estim_mag * torch.sin(phase)
+        estim_stft = torch.stack((estim_mag * torch.cos(phase),
+                                  estim_mag * torch.sin(phase)), dim=-1)
         estimates = self.stft(estim_stft, inverse=True)
 
         return mask, estimates

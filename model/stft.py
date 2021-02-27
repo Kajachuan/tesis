@@ -36,21 +36,24 @@ class STFT(nn.Module):
             # Calcula la STFT
             data = torch.stft(data, n_fft=self.n_fft, hop_length=self.hop,
                               window=self.window, center=True, normalized=False,
-                              onesided=True, pad_mode='reflect', return_complex=True)
-                   # Dim: (n_batch * n_channels, n_bins, n_frames)
+                              onesided=True, pad_mode='reflect', return_complex=False)
+                   # Dim: (n_batch * n_channels, n_bins, n_frames, 2)
 
-            _, n_bins, n_frames = data.size()
-            data = data.reshape(n_batch, n_channels, n_bins, n_frames) # Dim: (n_batch, n_channels, n_bins, n_frames)
+            _, n_bins, n_frames, __ = data.size()
+            data = data.reshape(n_batch, n_channels, n_bins, n_frames, 2)
+                   # Dim: (n_batch, n_channels, n_bins, n_frames, 2)
+            real, imag = data[..., 0], data[..., 1]
 
-            mag = torch.abs(data)
-            phase = torch.angle(data)
+            eps = 1e-8
+            mag = torch.sqrt(real ** 2 + imag ** 2 + eps)
+            phase = torch.atan2(imag + eps, real + eps)
 
             data = torch.stack((mag, phase), dim=-1)
             return data
         else:
-            n_batch, n_channels, n_bins, n_frames = data.size()
-            data = data.reshape(n_batch * n_channels, n_bins, n_frames)
-                   # Dim: (n_batch * n_channels, n_bins, n_frames)
+            n_batch, n_channels, n_bins, n_frames, _ = data.size()
+            data = data.reshape(n_batch * n_channels, n_bins, n_frames, 2)
+                   # Dim: (n_batch * n_channels, n_bins, n_frames, 2)
 
             # Calculo la ISTFT
             data = torch.istft(data, n_fft=self.n_fft, hop_length=self.hop,
