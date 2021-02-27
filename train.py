@@ -7,7 +7,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
-from model.model import Model
+from model.spectrogram_model import SpectrogramModel
 
 def train(network, optimizer, train_loader, device):
     batch_loss = 0
@@ -61,7 +61,7 @@ def main():
     parser.add_argument("--target", type=str, default="vocals", help="Instrumento a separar")
     args = parser.parse_args()
 
-    model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft, args.hop]
+    model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft]
 
     use_cuda = torch.cuda.is_available()
     print("GPU disponible:", use_cuda)
@@ -69,9 +69,11 @@ def main():
 
     if args.dataset == "musdb":
         train_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="train", target=args.target,
-                                       duration=args.duration, samples=args.samples, random=False)
+                                       duration=args.duration, samples=args.samples, random=False,
+                                       n_fft=args.nfft, hop=args.hop)
         valid_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="valid", target=args.target,
-                                       duration=None, samples=1, random=False)
+                                       duration=None, samples=1, random=False,
+                                       n_fft=args.nfft, hop=args.hop)
     # elif args.dataset == "medleydb":
     #     pass
     else:
@@ -80,7 +82,7 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     valid_loader = DataLoader(valid_dataset, batch_size=1)
 
-    network = Model(*model_args).to(device)
+    network = SpectrogramModel(*model_args).to(device)
     optimizer = Adam(network.parameters(), lr=args.learning_rate)
 
     if args.checkpoint:
