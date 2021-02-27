@@ -36,7 +36,7 @@ class Model(nn.Module):
 
         mix = data
         data = 10 * torch.log10(data)
-        assert not torch.eq(mix, data).all()
+        print(data.size())
         data = self.batch_norm(data)
         data = self.blstm(data)
         mask = self.mask(data)
