@@ -7,7 +7,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
-from model.spectrogram_model import SpectrogramModel
+from model.spectrogram_model import Model
 
 def train(network, optimizer, train_loader, device):
     batch_loss = 0
@@ -82,7 +82,7 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     valid_loader = DataLoader(valid_dataset, batch_size=1)
 
-    network = SpectrogramModel(*model_args).to(device)
+    network = Model(*model_args).to(device)
     optimizer = Adam(network.parameters(), lr=args.learning_rate)
 
     if args.checkpoint:
