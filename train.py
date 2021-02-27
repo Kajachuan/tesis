@@ -21,7 +21,7 @@ def train(network, optimizer, train_loader, device):
         m, y_hat = network(x)
         assert not torch.any(torch.isnan(x))
         assert not torch.any(torch.isnan(y))
-        assert not torch.any(torch.isnan(y_hay))
+        assert not torch.any(torch.isnan(y_hat))
         loss = mse_loss(y_hat, y)
         loss.backward()
         optimizer.step()
