@@ -63,6 +63,8 @@ def main():
 
     model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft]
 
+    torch.autograd.set_detect_anomaly(True)
+
     use_cuda = torch.cuda.is_available()
     print("GPU disponible:", use_cuda)
     device = torch.device("cuda:0" if use_cuda else "cpu")
