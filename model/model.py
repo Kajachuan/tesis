@@ -10,7 +10,7 @@ class Model(nn.Module):
     Modelo para separación de instrumentos
     """
     def __init__(self, n_channels: int, hidden_size: int, num_layers: int,
-                 dropout: float, n_fft: int = 4096, hop: int = 1024) -> None:
+                 dropout: float, n_fft: int, hop: int) -> None:
         """
         Argumentos:
             n_channels -- Número de canales de audio
@@ -41,14 +41,13 @@ class Model(nn.Module):
 
         stft = self.stft(data)
         mag, phase = stft[..., 0], stft[..., 1]
-        mag_db = 10 * torch.log10(mag)
+        mag_db = 10 * torch.log10(mag + 1e-8)
         data = self.batch_norm(mag_db)
         data = self.blstm(data)
         mask = self.mask(data)
 
         estim_mag = mag * mask
-        estim_stft = torch.stack((estim_mag * torch.cos(phase),
-                                  estim_mag * torch.sin(phase)), dim=-1)
+        estim_stft = estim_mag * torch.cos(phase) + 1j * estim_mag * torch.sin(phase)
         estimates = self.stft(estim_stft, inverse=True)
 
         return mask, estimates

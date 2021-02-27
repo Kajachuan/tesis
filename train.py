@@ -61,7 +61,7 @@ def main():
     parser.add_argument("--target", type=str, default="vocals", help="Instrumento a separar")
     args = parser.parse_args()
 
-    model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft]
+    model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft, args.hop]
 
     torch.autograd.set_detect_anomaly(True)
 
@@ -71,11 +71,9 @@ def main():
 
     if args.dataset == "musdb":
         train_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="train", target=args.target,
-                                       duration=args.duration, samples=args.samples, random=False,
-                                       n_fft=args.nfft, hop=args.hop)
+                                       duration=args.duration, samples=args.samples, random=False)
         valid_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="valid", target=args.target,
-                                       duration=None, samples=1, random=False,
-                                       n_fft=args.nfft, hop=args.hop)
+                                       duration=None, samples=1, random=False)
     # elif args.dataset == "medleydb":
     #     pass
     else:
