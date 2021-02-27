@@ -7,7 +7,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
-from model.spectrogram_model import Model
+from model.model import Model
 
 def train(network, optimizer, train_loader, device):
     batch_loss = 0
