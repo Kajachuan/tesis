@@ -42,8 +42,8 @@ class STFT(nn.Module):
             _, n_bins, n_frames = data.size()
             data = data.reshape(n_batch, n_channels, n_bins, n_frames) # Dim: (n_batch, n_channels, n_bins, n_frames)
 
-            mag = torch.abs(mag)
-            phase = torch.angle(mag)
+            mag = torch.abs(data)
+            phase = torch.angle(data)
 
             data = torch.stack((mag, phase), dim=-1)
             return data
