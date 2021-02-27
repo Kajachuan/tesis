@@ -2,6 +2,7 @@ import musdb
 import random
 import torch
 import librosa
+import numpy as np
 from torch.utils.data import Dataset
 from typing import Optional, Tuple
 
@@ -42,10 +43,10 @@ class MUSDB18Dataset(Dataset):
             track.chunk_start = random.uniform(0, track.duration - self.duration)
         x_audio = track.audio.T
         y_audio = track.targets[self.target].audio.T
-        x = torch.as_tensor([librosa.stft(x_audio[0], n_fft=self.n_fft, hop_length=self.hop),
-                             librosa.stft(x_audio[1], n_fft=self.n_fft, hop_length=self.hop)], dtype=torch.float)
-        y = torch.as_tensor([librosa.stft(y_audio[0], n_fft=self.n_fft, hop_length=self.hop),
-                             librosa.stft(y_audio[1], n_fft=self.n_fft, hop_length=self.hop)], dtype=torch.float)
+        x = torch.as_tensor([np.abs(librosa.stft(x_audio[0], n_fft=self.n_fft, hop_length=self.hop)),
+                             np.abs(librosa.stft(x_audio[1], n_fft=self.n_fft, hop_length=self.hop))])
+        y = torch.as_tensor([np.abs(librosa.stft(y_audio[0], n_fft=self.n_fft, hop_length=self.hop)),
+                             np.abs(librosa.stft(y_audio[1], n_fft=self.n_fft, hop_length=self.hop))])
         return x, y
 
     def __len__(self) -> int:
