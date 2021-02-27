@@ -20,6 +20,7 @@ class Model(nn.Module):
         """
         super(Model, self).__init__()
 
+        n_bins = n_fft // 2 + 1
         self.batch_norm = BatchNorm(n_bins)
         self.blstm = BLSTM(n_channels * n_bins, hidden_size, num_layers, dropout)
         self.mask = Mask(n_bins, 2 * hidden_size, n_channels)
