@@ -71,7 +71,7 @@ def main():
 
     if args.dataset == "musdb":
         train_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="train", target=args.target,
-                                       duration=args.duration, samples=args.samples, random=False)
+                                       duration=args.duration, samples=args.samples, random=True)
         valid_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="valid", target=args.target,
                                        duration=None, samples=1, random=False)
     # elif args.dataset == "medleydb":
