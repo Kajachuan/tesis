@@ -29,13 +29,33 @@ class MUSDB18Dataset(Dataset):
         self.mus = musdb.DB(root=base_path, subsets=subset, split=split)
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        sources = []
+        target_idx = None
+
         track = self.mus[index // self.samples]
 
         if self.split == 'train' and self.duration:
-            track.chunk_duration = self.duration
-            track.chunk_start = random.uniform(0, track.duration - self.duration)
-        x = torch.as_tensor(track.audio.T, dtype=torch.float32)
-        y = torch.as_tensor(track.targets[self.target].audio.T, dtype=torch.float32)
+            for idx, source in enumerate(self.mus.setup['sources']):
+                if source == self.target:
+                    target_idx = idx
+
+                if self.random:
+                    track = random.choice(self.mus)
+
+                track.chunk_duration = self.duration
+                track.chunk_start = random.uniform(0, track.duration - self.duration)
+
+                audio = torch.as_tensor(track.sources[source].audio.T, dtype=torch.float32)
+                sources.append(audio)
+
+            stems = torch.stack(sources, dim=0)
+            x = stems.sum(0)
+            y = stems[target_idx]
+
+        # Validación y Test: canciones completas
+        else:
+            x = torch.as_tensor(track.audio.T, dtype=torch.float32)
+            y = torch.as_tensor(track.targets[self.target].audio.T, dtype=torch.float32)
         return x, y
 
     def __len__(self) -> int:
