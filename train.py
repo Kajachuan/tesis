@@ -4,6 +4,7 @@ import torch
 import torchaudio
 import tqdm
 from torch.optim import Adam
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
@@ -84,11 +85,13 @@ def main():
 
     network = Model(*model_args).to(device)
     optimizer = Adam(network.parameters(), lr=args.learning_rate)
+    scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, verbose=True)
 
     if args.checkpoint:
         state = torch.load(f"{args.checkpoint}/{args.target}/last_checkpoint", map_location=device)
         network.load_state_dict(state["state_dict"])
         optimizer.load_state_dict(state["optimizer"])
+        scheduler.load_state_dict(state["scheduler"])
 
         train_losses = state["train_losses"]
         valid_losses = state["valid_losses"]
@@ -105,6 +108,7 @@ def main():
         t.set_description(f"Entrenando época")
         train_loss = train(network, optimizer, train_loader, device)
         valid_loss = valid(network, optimizer, valid_loader, device)
+        scheduler.step(valid_loss)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
 
@@ -116,6 +120,7 @@ def main():
             "best_loss": best_loss,
             "state_dict": network.state_dict(),
             "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
             "train_losses": train_losses,
             "valid_losses": valid_losses
         }
