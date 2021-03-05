@@ -17,7 +17,7 @@ def train(network, optimizer, train_loader, device):
     pbar = tqdm.tqdm(train_loader)
     for x, y in pbar:
         pbar.set_description("Entrenando batch")
-        x, y = x.to(device), y.to(device)
+        x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad()
         m, y_hat = network(x)
         loss = mse_loss(y_hat, y)
@@ -27,7 +27,7 @@ def train(network, optimizer, train_loader, device):
         count += y.size(0)
     return batch_loss / count
 
-def valid(network, optimizer, valid_loader, device):
+def valid(network, valid_loader, device):
     batch_loss = 0
     count = 0
     network.eval()
@@ -35,7 +35,7 @@ def valid(network, optimizer, valid_loader, device):
         pbar = tqdm.tqdm(valid_loader)
         for x, y in pbar:
             pbar.set_description("Validando")
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             m, y_hat = network(x)
             loss = mse_loss(y_hat, y)
             batch_loss += loss.item() * y.size(0)
@@ -80,8 +80,8 @@ def main():
     else:
         raise NotImplementedError
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    valid_loader = DataLoader(valid_dataset, batch_size=1)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
+    valid_loader = DataLoader(valid_dataset, batch_size=1, num_workers=2, pin_memory=True)
 
     network = Model(*model_args).to(device)
     optimizer = Adam(network.parameters(), lr=args.learning_rate)
@@ -107,7 +107,7 @@ def main():
     for epoch in t:
         t.set_description(f"Entrenando época")
         train_loss = train(network, optimizer, train_loader, device)
-        valid_loss = valid(network, optimizer, valid_loader, device)
+        valid_loss = valid(network, valid_loader, device)
         scheduler.step(valid_loss)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
