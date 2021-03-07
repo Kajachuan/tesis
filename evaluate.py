@@ -28,10 +28,10 @@ def main():
         for track in tqdm.tqdm(mus.tracks):
             signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
             _, estimate = network(signal.unsqueeze(0))
-            estimates = {args.target: estimate.cpu().numpy()[0, ...]}
+            vocals = estimate.cpu().numpy()[0, ...].T
+            estimates = {args.target: vocals, 'accompaniment': track.audio - vocals}
             score = museval.eval_mus_track(track, estimates)
-            print(score)
-            # results.add_track(score)
+            results.add_track(score)
 
     print(results)
 
