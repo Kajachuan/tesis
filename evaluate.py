@@ -26,10 +26,11 @@ def main():
     results = museval.EvalStore()
     with torch.no_grad():
         for track in tqdm.tqdm(mus):
+            original = track.targets[args.target].audio.T
             signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
             _, estimate = network(signal.unsqueeze(0))
             estimate = estimate.cpu()[0, ...]
-            score = museval.eval_mus_track(track.targets[args.target].audio.T, estimate)
+            score = museval.eval_mus_track(original, estimate)
             results.add_track(score)
 
     print(results)
