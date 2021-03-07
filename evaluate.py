@@ -30,7 +30,8 @@ def main():
             _, estimate = network(signal.unsqueeze(0))
             estimates = {args.target: estimate.cpu().numpy()[0, ...]}
             score = museval.eval_mus_track(track, estimates)
-            results.add_track(score)
+            print(score)
+            # results.add_track(score)
 
     print(results)
 
