@@ -60,6 +60,8 @@ def main():
     parser.add_argument("--root", type=str, help="Ruta del dataset")
     parser.add_argument("--samples", type=int, default=1, help="Muestras por cancion")
     parser.add_argument("--target", type=str, default="vocals", help="Instrumento a separar")
+    parser.add_argument("--weight-decay", type=float, default=0, help="Decaimiento de los pesos de Adam")
+    parser.add_argument("--workers", type=int, default=0, help="Número de workers para cargar los datos")
     args = parser.parse_args()
 
     model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft, args.hop]
@@ -80,11 +82,11 @@ def main():
     else:
         raise NotImplementedError
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
-    valid_loader = DataLoader(valid_dataset, batch_size=1, num_workers=2, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
+    valid_loader = DataLoader(valid_dataset, batch_size=1, num_workers=args.workers, pin_memory=True)
 
     network = Model(*model_args).to(device)
-    optimizer = Adam(network.parameters(), lr=args.learning_rate)
+    optimizer = Adam(network.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, verbose=True)
 
     if args.checkpoint:
