@@ -21,7 +21,7 @@ def train(network, optimizer, train_loader, device, stft):
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad()
         m, y_mag_hat, y_hat = network(x)
-        y_mag = stft(y)[..., 0]
+        y_mag = stft(y)[..., 0].to(device)
         loss = mse_loss(y_mag_hat, y_mag)
         loss.backward()
         optimizer.step()
@@ -39,7 +39,7 @@ def valid(network, valid_loader, device, stft):
             pbar.set_description("Validando")
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             m, y_mag_hat, y_hat = network(x)
-            y_mag = stft(y)[..., 0]
+            y_mag = stft(y)[..., 0].to(device)
             loss = mse_loss(y_mag_hat, y_mag)
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)
