@@ -51,4 +51,4 @@ class Model(nn.Module):
                                   estim_mag * torch.sin(phase)), dim=-1)
         estimates = self.stft(estim_stft, inverse=True)
 
-        return mask, estimates
+        return mask, estim_mag, estimates

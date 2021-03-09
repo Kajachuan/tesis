@@ -9,8 +9,9 @@ from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
 from model.model import Model
+from model.stft import STFT
 
-def train(network, optimizer, train_loader, device):
+def train(network, optimizer, train_loader, device, stft):
     batch_loss = 0
     count = 0
     network.train()
@@ -19,15 +20,16 @@ def train(network, optimizer, train_loader, device):
         pbar.set_description("Entrenando batch")
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad()
-        m, y_hat = network(x)
-        loss = mse_loss(y_hat, y)
+        m, y_mag_hat, y_hat = network(x)
+        y_mag = stft(y)[..., 0]
+        loss = mse_loss(y_mag_hat, y_mag)
         loss.backward()
         optimizer.step()
         batch_loss += loss.item() * y.size(0)
         count += y.size(0)
     return batch_loss / count
 
-def valid(network, valid_loader, device):
+def valid(network, valid_loader, device, stft):
     batch_loss = 0
     count = 0
     network.eval()
@@ -36,8 +38,9 @@ def valid(network, valid_loader, device):
         for x, y in pbar:
             pbar.set_description("Validando")
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
-            m, y_hat = network(x)
-            loss = mse_loss(y_hat, y)
+            m, y_mag_hat, y_hat = network(x)
+            y_mag = stft(y)[..., 0]
+            loss = mse_loss(y_mag_hat, y_mag)
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)
         return batch_loss / count
@@ -89,6 +92,8 @@ def main():
     optimizer = Adam(network.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, verbose=True)
 
+    stft = STFT(args.nfft, args.hop)
+
     if args.checkpoint:
         state = torch.load(f"{args.checkpoint}/{args.target}/last_checkpoint", map_location=device)
         network.load_state_dict(state["state_dict"])
@@ -108,8 +113,8 @@ def main():
     t = tqdm.trange(initial_epoch, args.epochs + 1)
     for epoch in t:
         t.set_description(f"Entrenando época")
-        train_loss = train(network, optimizer, train_loader, device)
-        valid_loss = valid(network, valid_loader, device)
+        train_loss = train(network, optimizer, train_loader, device, stft)
+        valid_loss = valid(network, valid_loader, device, stft)
         scheduler.step(valid_loss)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
