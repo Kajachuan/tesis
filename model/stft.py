@@ -45,8 +45,8 @@ class STFT(nn.Module):
             real, imag = data[..., 0], data[..., 1]
 
             eps = 1e-8
-            mag = torch.sqrt(real ** 2 + imag ** 2 + eps)
-            phase = torch.atan2(imag + eps, real + eps)
+            mag = torch.sqrt(torch.clamp(real ** 2 + imag ** 2, min=eps))
+            phase = torch.atan2(imag, real + eps)
 
             data = torch.stack((mag, phase), dim=-1)
             return data
