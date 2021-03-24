@@ -46,6 +46,7 @@ class MUSDB18Dataset(Dataset):
                 track.chunk_start = random.uniform(0, track.duration - self.duration)
 
                 audio = torch.as_tensor(track.sources[source].audio.T, dtype=torch.float32)
+                audio *= random.uniform(0.25, 1.25)
                 sources.append(audio)
 
             stems = torch.stack(sources, dim=0)
