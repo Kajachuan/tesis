@@ -50,7 +50,7 @@ class MUSDB18Dataset(Dataset):
                 audio *= np.random.uniform(0.25, 1.25, (audio.shape[0], 1))
                 if random.random() < 0.5:
                     audio = np.flipud(audio)
-                audio = torch.as_tensor(audio, dtype=torch.float32)
+                audio = torch.as_tensor(audio.copy(), dtype=torch.float32)
                 sources.append(audio)
 
             stems = torch.stack(sources, dim=0)
