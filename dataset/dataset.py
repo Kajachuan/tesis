@@ -1,6 +1,7 @@
 import musdb
 import random
 import torch
+import numpy as np
 from torch.utils.data import Dataset
 from typing import Optional, Tuple
 
@@ -45,8 +46,11 @@ class MUSDB18Dataset(Dataset):
                 track.chunk_duration = self.duration
                 track.chunk_start = random.uniform(0, track.duration - self.duration)
 
-                audio = torch.as_tensor(track.sources[source].audio.T, dtype=torch.float32)
-                audio *= random.uniform(0.25, 1.25)
+                audio = track.sources[source].audio.T
+                audio *= np.random.uniform(0.25, 1.25, (audio.shape[0], 1))
+                if random.random() < 0.5:
+                    audio = np.flipud(audio)
+                audio = torch.as_tensor(audio, dtype=torch.float32)
                 sources.append(audio)
 
             stems = torch.stack(sources, dim=0)
