@@ -134,6 +134,7 @@ def main():
 
         if valid_loss < best_loss:
             best_loss = valid_loss
+            state["best_loss"] = best_loss
             torch.save(state, f"{args.output}/{args.target}/best_checkpoint")
         torch.save(state, f"{args.output}/{args.target}/last_checkpoint")
 
