@@ -1,7 +1,6 @@
 import argparse
-import json
+import os
 import torch
-import torchaudio
 import tqdm
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -110,6 +109,9 @@ def main():
         initial_epoch = 1
         best_loss = float("inf")
 
+    if not os.path.exists(f"{args.output}/{args.target}"):
+        os.mkdir(f"{args.output}/{args.target}")
+        
     t = tqdm.trange(initial_epoch, args.epochs + 1)
     for epoch in t:
         t.set_description(f"Entrenando época")
