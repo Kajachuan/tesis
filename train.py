@@ -109,9 +109,10 @@ def main():
         initial_epoch = 1
         best_loss = float("inf")
 
-    if not os.path.exists(f"{args.output}/{args.target}"):
-        os.mkdir(f"{args.output}/{args.target}")
-        
+    out_path = f"{args.output}/{args.target}"
+    if not os.path.exists(out_path):
+        os.mkdir(out_path)
+
     t = tqdm.trange(initial_epoch, args.epochs + 1)
     for epoch in t:
         t.set_description(f"Entrenando época")
@@ -137,8 +138,8 @@ def main():
         if valid_loss < best_loss:
             best_loss = valid_loss
             state["best_loss"] = best_loss
-            torch.save(state, f"{args.output}/{args.target}/best_checkpoint")
-        torch.save(state, f"{args.output}/{args.target}/last_checkpoint")
+            torch.save(state, f"{out_path}/best_checkpoint")
+        torch.save(state, f"{out_path}/last_checkpoint")
 
 if __name__ == '__main__':
     main()
