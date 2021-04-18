@@ -3,7 +3,7 @@ import musdb
 import museval
 import torch
 import tqdm
-from model.model import Model
+from spectrogram_model.model import SpectrogramModel
 
 def main():
     parser = argparse.ArgumentParser()
@@ -19,7 +19,7 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
 
     state = torch.load(args.checkpoint)
-    network = Model(*state["args"]).to(device)
+    network = SpectrogramModel(*state["args"]).to(device)
     network.load_state_dict(state["state_dict"])
     network.eval()
 

@@ -7,8 +7,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
-from model.model import Model
-from model.stft import STFT
+from spectrogram_model.model import SpectrogramModel
+from spectrogram_model.stft import STFT
 
 def train(network, optimizer, train_loader, device, stft):
     batch_loss = 0
@@ -87,7 +87,7 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
     valid_loader = DataLoader(valid_dataset, batch_size=1, num_workers=args.workers, pin_memory=True)
 
-    network = Model(*model_args).to(device)
+    network = SpectrogramModel(*model_args).to(device)
     optimizer = Adam(network.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, verbose=True)
 
