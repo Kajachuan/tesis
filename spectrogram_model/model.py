@@ -4,6 +4,7 @@ from spectrogram_model.stft import STFT
 from spectrogram_model.batch_norm import BatchNorm
 from spectrogram_model.blstm import BLSTM
 from spectrogram_model.mask import Mask
+from typing import Tuple
 
 class SpectrogramModel(nn.Module):
     """
@@ -30,13 +31,15 @@ class SpectrogramModel(nn.Module):
         self.blstm = BLSTM(n_channels * n_bins, hidden_size, num_layers, dropout)
         self.mask = Mask(n_bins, 2 * hidden_size, n_channels)
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
+    def forward(self, data: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Argumentos:
             data -- Audio de dimensión (n_batch, n_channels, n_timesteps)
 
         Retorna:
-            Máscara, Estimación
+            Máscara
+            Estimación (magnitud del espectrograma)
+            Estimación (wave)
         """
 
         stft = self.stft(data)
