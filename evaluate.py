@@ -21,8 +21,9 @@ def main():
 
     stems = ["vocals", "drums", "bass", "other"]
     models = {}
-    print("Cargando modelos")
+    print("Cargando modelos:")
     for stem in stems:
+        print(f"\tCargando modelo de {stem}")
         state = torch.load(f"{args.checkpoints}/{stem}/best_checkpoint")
         models[stem] = Model(*state["args"]).to(device)
         models[stem].load_state_dict(state["state_dict"])
@@ -37,8 +38,9 @@ def main():
         signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
         result = {}
         for stem in stems:
-            result[stem] = models[stem](signal.unsqueeze(0)).cpu().numpy()[0, ...].T
-        museval.eval_mus_track(track, result, f"{args.output}/{track.name}")
+            _, _, estim = models[stem](signal.unsqueeze(0))
+            result[stem] = estim[0, ...].cpu().detach().numpy().T
+        museval.eval_mus_track(track, result, f"{args.output}")
 
 if __name__ == '__main__':
     main()
