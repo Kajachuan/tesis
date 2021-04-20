@@ -23,7 +23,7 @@ def main():
     models = {}
     print("Cargando modelos")
     for stem in stems:
-        state = torch.load(f"{args.checkpoints}/{stem}")
+        state = torch.load(f"{args.checkpoints}/{stem}/best_checkpoint")
         models[stem] = Model(*state["args"]).to(device)
         models[stem].load_state_dict(state["state_dict"])
         models[stem].eval()
