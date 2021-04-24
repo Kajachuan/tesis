@@ -40,6 +40,7 @@ class WaveModel(nn.Module):
         current = self.middle(current)
         for i in range(self.layers - 1, -1, -1):
             current = self.upsampling[i](current, bypass[i])
+            del bypass[i]
 
         current = self.output(current, concat_input)
         return current
