@@ -16,6 +16,7 @@ def upsample(x: torch.Tensor) -> torch.Tensor:
     out = torch.zeros(n_batch, channels, 2 * timesteps - 1, device=x.device)
     out[..., ::2] = x
     out[..., 1::2] = (x[..., :-1] + x[..., 1:]) / 2
+    del x
     return out
 
 class DownsamplingBlock(nn.Module):
