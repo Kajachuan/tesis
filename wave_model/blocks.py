@@ -13,7 +13,7 @@ def upsample(x: torch.Tensor) -> torch.Tensor:
     Interpolación por un factor de 2
     """
     n_batch, channels, timesteps = x.size()
-    out = torch.zeros(n_batch, channels, 2 * timesteps - 1)
+    out = torch.zeros(n_batch, channels, 2 * timesteps - 1, device=x.device)
     out[..., ::2] = x
     out[..., 1::2] = (x[..., :-1] + x[..., 1:]) / 2
     return out
