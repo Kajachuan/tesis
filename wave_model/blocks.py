@@ -13,10 +13,10 @@ def upsample(x: torch.Tensor) -> torch.Tensor:
     Interpolación por un factor de 2
     """
     n_batch, channels, timesteps = x.size()
-    out = torch.zeros(n_batch, channels, 2 * timesteps - 1)
-    out[..., ::2] = x
-    out[..., 1::2] = (x[..., :-1] + x[..., 1:]) / 2
-    return out
+    weight = torch.arange(2, device=x.device, dtype=torch.float32) / 2
+    x = x.view(n_batch, channels, timesteps, 1)
+    out = x[..., :-1, :] * (1 - weight) + x[..., 1:, :] * weight
+    return out.reshape(n_batch, channels, -1)
 
 class DownsamplingBlock(nn.Module):
     """
@@ -101,7 +101,7 @@ class UpsamplingBlock(nn.Module):
         diff = concat.size(-1) - data.size(-1)
         l_pad = diff // 2
         r_pad = diff - l_pad
-        data = nn.ZeroPad2d((l_pad, r_pad, 0, 0))(data.unsqueeze(0))[0].to(concat.device)
+        data = nn.ZeroPad2d((l_pad, r_pad, 0, 0))(data.unsqueeze(0))[0]
 
         data = torch.cat([data, concat], dim=1)
         data = self.conv(data)
@@ -134,7 +134,7 @@ class OutputBlock(nn.Module):
         diff = concat.size(-1) - data.size(-1)
         l_pad = diff // 2
         r_pad = diff - l_pad
-        data = nn.ZeroPad2d((l_pad, r_pad, 0, 0))(data.unsqueeze(0))[0].to(concat.device)
+        data = nn.ZeroPad2d((l_pad, r_pad, 0, 0))(data.unsqueeze(0))[0]
 
         data = torch.cat([data, concat], dim=1)
         data = self.conv(data)
