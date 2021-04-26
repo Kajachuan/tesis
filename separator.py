@@ -48,7 +48,7 @@ class SpectrogramSeparator(Separator):
     def separate(self, track: torch.Tensor) -> Dict[str, ndarray]:
         result = {}
         for stem in self.stems:
-            _, _, estim = models[stem](track.unsqueeze(0))
+            _, _, estim = self.models[stem](track.unsqueeze(0))
             result[stem] = estim[0, ...].cpu().detach().numpy().T
         track = track.cpu().detach().numpy().T
 
