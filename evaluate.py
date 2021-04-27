@@ -10,7 +10,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoints", type=str, help="Ruta del modelo a evaluar")
-    parser.add_argument("--end", type=int, default=0, choices=range(50), help="Índice de la canción de fin")
+    parser.add_argument("--end", type=int, default=49, choices=range(50), help="Índice de la canción de fin")
     parser.add_argument("--init", type=int, default=0, choices=range(50), help="Índice de la canción de inicio")
     parser.add_argument("--model", type=str, choices=["spectrogram", "wave"], help="Modelo a utilizar")
     parser.add_argument("--other", action="store_true", help="Utilizar el modelo de other")
