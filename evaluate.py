@@ -36,6 +36,7 @@ def main():
         print(f"Canción {i}: {track.name}")
 
         # Primera mitad
+        print("Primera mitad")
         half = track.duration // 2
         track.chunk_duration = half
         signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
@@ -43,6 +44,7 @@ def main():
         museval.eval_mus_track(track, result, f"{args.output}1")
 
         # Segunda mitad
+        print("Segunda mitad")
         track.chunk_start = half
         track.chunk_duration = track.duration - half
         signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
