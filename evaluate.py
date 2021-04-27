@@ -34,9 +34,20 @@ def main():
     for i in tqdm.tqdm(range(args.init, args.end + 1)):
         track = mus.tracks[i]
         print(f"Canción {i}: {track.name}")
+
+        # Primera mitad
+        half = track.duration // 2
+        track.chunk_duration = half
         signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
         result = separator.separate(signal)
-        museval.eval_mus_track(track, result, f"{args.output}")
+        museval.eval_mus_track(track, result, f"{args.output}1")
+
+        # Segunda mitad
+        track.chunk_start = half
+        track.chunk_duration = track.duration - half
+        signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
+        result = separator.separate(signal)
+        museval.eval_mus_track(track, result, f"{args.output}2")
 
 if __name__ == '__main__':
     main()
