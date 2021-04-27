@@ -10,6 +10,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoints", type=str, help="Ruta del modelo a evaluar")
+    parser.add_argument("--end", type=int, default=0, choices=range(50), help="Índice de la canción de fin")
     parser.add_argument("--init", type=int, default=0, choices=range(50), help="Índice de la canción de inicio")
     parser.add_argument("--model", type=str, choices=["spectrogram", "wave"], help="Modelo a utilizar")
     parser.add_argument("--other", action="store_true", help="Utilizar el modelo de other")
@@ -30,7 +31,7 @@ def main():
     print("Cargando canciones de test")
     mus = musdb.DB(root=args.root, subsets='test')
 
-    for i in tqdm.tqdm(range(args.init, 50)):
+    for i in tqdm.tqdm(range(args.init, args.end + 1)):
         track = mus.tracks[i]
         print(f"Canción {i}: {track.name}")
         signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
