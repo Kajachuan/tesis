@@ -23,7 +23,7 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
 
     if args.model == "spectrogram":
-        separator = SpectrogramSeparator(self.checkpoints, self.other, self.vocals)
+        separator = SpectrogramSeparator(args.checkpoints, args.other, args.vocals)
     else: # wave
         raise NotImplementedError
 
