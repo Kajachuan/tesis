@@ -6,7 +6,7 @@ from spectrogram_model.model import SpectrogramModel
 from wave_model.model import WaveModel
 
 class SpectrogramSeparator:
-    def __init__(self, root: str, use_other: bool, use_vocals: bool) -> None:
+    def __init__(self, root: str, use_other: bool, use_vocals: bool, device: torch.device) -> None:
         """
         Argumentos:
             root -- Directorio donde se encuentran los checkpoints
@@ -14,10 +14,12 @@ class SpectrogramSeparator:
                          False si se calcula "other" como la resta con "vocals" + "drums" + "bass"
             use_vocals -- True si se calcula "accompaniment" como la resta con "vocals"
                           False si se calcula "accompaniment" como "drums" + "bass" + "other"
+            device -- Device de PyTorch a utilizar
         """
         self.root = root
         self.use_other = use_other
         self.use_vocals = use_vocals
+        self.device = device
 
         self.stems = ["vocals", "drums", "bass"]
         if self.use_other:
@@ -47,6 +49,6 @@ class SpectrogramSeparator:
     def load_model(self, stem: str) -> None:
         print(f"Cargando modelo de {stem}")
         state = torch.load(f"{self.root}/{stem}/best_checkpoint")
-        self.models[stem] = SpectrogramModel(*state["args"]).to(device)
+        self.models[stem] = SpectrogramModel(*state["args"]).to(self.device)
         self.models[stem].load_state_dict(state["state_dict"])
         self.models[stem].eval()
