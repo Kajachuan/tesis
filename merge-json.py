@@ -14,10 +14,20 @@ def main():
     data1 = json.load(f1)
     data2 = json.load(f2)
 
-    print(data1)
-
     f1.close()
     f2.close()
+
+    for target1 in data1["targets"]:
+        for target2 in data2["targets"]:
+            if target2["name"] == target1["name"]:
+                frames1 = target1["frames"]
+                frames2 = target2["frames"]
+                for frame in frames2:
+                    frame["time"] += len(frames1)
+                target1["frames"] = frames1 + frames2
+                break
+
+    print(data1)
 
 if __name__ == '__main__':
     main()
