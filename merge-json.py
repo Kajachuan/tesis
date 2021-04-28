@@ -27,7 +27,8 @@ def main():
                 target1["frames"] = frames1 + frames2
                 break
 
-    print(data1)
+    with open(args.output, "w") as out:
+        json.dump(data1, out, indent=2)
 
 if __name__ == '__main__':
     main()
