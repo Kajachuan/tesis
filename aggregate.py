@@ -1,7 +1,7 @@
-# Script perteneciente al repositorio: https://github.com/sigsep/sigsep-mus-2018-analysis
+# Script modificado del repositorio: https://github.com/sigsep/sigsep-mus-2018-analysis
 
 from pathlib import Path
-from pandas.io.json import json_normalize
+from pandas import json_normalize
 import pandas as pd
 import json
 import argparse
@@ -16,13 +16,10 @@ def museval2df(json_path):
             ['name']
         )
         df = pd.melt(
-            pd.concat(
-                [
-                    df.drop(['metrics'], axis=1),
-                    df['metrics'].apply(pd.Series)
-                ],
-                axis=1
-            ),
+            df.rename(index=str, columns={'metrics.SDR': 'SDR',
+                                          'metrics.SAR': 'SAR',
+                                          'metrics.ISR': 'ISR',
+                                          'metrics.SIR': 'SIR'}),
             var_name='metric',
             value_name='score',
             id_vars=['time', 'name'],
