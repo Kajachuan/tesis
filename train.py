@@ -123,7 +123,7 @@ def main():
 
     if args.checkpoint:
         state = torch.load(f"{args.checkpoint}/{args.target}/last_checkpoint")
-        xm.send_cpu_data_to_device(state, xm.xla_device())
+        xm.send_cpu_data_to_device(state, device)
         network.load_state_dict(state["state_dict"])
         optimizer.load_state_dict(state["optimizer"])
         scheduler.load_state_dict(state["scheduler"])
