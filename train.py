@@ -122,7 +122,8 @@ def main():
     scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, verbose=True)
 
     if args.checkpoint:
-        state = torch.load(f"{args.checkpoint}/{args.target}/last_checkpoint", map_location=device)
+        state = torch.load(f"{args.checkpoint}/{args.target}/last_checkpoint")
+        xm.send_cpu_data_to_device(state, xm.xla_device())
         network.load_state_dict(state["state_dict"])
         optimizer.load_state_dict(state["optimizer"])
         scheduler.load_state_dict(state["scheduler"])
