@@ -2,6 +2,8 @@ import argparse
 import os
 import torch
 import tqdm
+import torch_xla
+import torch_xla.core.xla_model as xm
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
@@ -28,7 +30,7 @@ def train(network, optimizer, train_loader, device, stft):
 
         loss = mse_loss(y_hat, y)
         loss.backward()
-        optimizer.step()
+        xm.optimizer_step(optimizer, barrier=True)
         batch_loss += loss.item() * y.size(0)
         count += y.size(0)
     return batch_loss / count
@@ -90,9 +92,7 @@ def main():
 
     torch.autograd.set_detect_anomaly(True)
 
-    use_cuda = torch.cuda.is_available()
-    print("GPU disponible:", use_cuda)
-    device = torch.device("cuda:0" if use_cuda else "cpu")
+    device = xm.xla_device()
 
     if args.model == "spectrogram":
         model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft, args.hop]
