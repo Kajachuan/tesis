@@ -9,8 +9,8 @@ class MUSDB18Dataset(Dataset):
     """
     Dataset MUSDB18 (basado en la implementación en OpenUnmix)
     """
-    def __init__(self, base_path: str, subset: str, split: str, target: str,
-                 duration: Optional[float], samples: int = 1, random: bool = False) -> None:
+    def __init__(self, base_path: str, subset: str, split: str, target: str, duration: Optional[float],
+                 samples: int = 1, random: bool = False, half: bool = False) -> None:
         """
         base_path -- Ruta del dataset
         subset -- Nombre del conjunto: 'train' o 'test'
@@ -19,6 +19,7 @@ class MUSDB18Dataset(Dataset):
         duration -- Duración de cada canción en segundos
         samples -- Cantidad de muestras de cada cancion
         random -- True si se van a mezclar las canciones de forma aleatoria
+        half -- True si las canciones se van a partir por la mitad (válido solo para split='valid')
         """
         super(MUSDB18Dataset, self).__init__()
         self.sample_rate = 44100 # Por ahora no se usa
@@ -27,15 +28,15 @@ class MUSDB18Dataset(Dataset):
         self.duration = duration
         self.samples = samples
         self.random = random
+        self.half = half
         self.mus = musdb.DB(root=base_path, subsets=subset, split=split)
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        sources = []
-        target_idx = None
-
-        track = self.mus[index // self.samples]
-
         if self.split == 'train' and self.duration:
+            sources = []
+            target_idx = None
+            track = self.mus[index // self.samples]
+
             for idx, source in enumerate(self.mus.setup['sources']):
                 if source == self.target:
                     target_idx = idx
@@ -57,11 +58,21 @@ class MUSDB18Dataset(Dataset):
             x = stems.sum(0)
             y = stems[target_idx]
 
-        # Validación y Test: canciones completas
+        # Validación y Test
         else:
+            track = self.mus[index // (1 + self.half)]
+
+            if self.half:
+                half = track.duration // 2
+                if index % 2 == 0:
+                    track.chunk_duration = half
+                else:
+                    track.chunk_start = half
+                    track.chunk_duration = track.duration - half
+
             x = torch.as_tensor(track.audio.T, dtype=torch.float32)
             y = torch.as_tensor(track.targets[self.target].audio.T, dtype=torch.float32)
         return x, y
 
     def __len__(self) -> int:
-        return len(self.mus) * self.samples
+        return len(self.mus) * self.samples * (1 + self.half)

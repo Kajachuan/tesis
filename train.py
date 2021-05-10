@@ -82,6 +82,7 @@ def main():
     # Modelo de wave
     parser_wave = subparsers.add_parser("wave", help="Modelo de wave")
     parser_wave.add_argument("--down", type=int, default=1, help="Tamaño del filtro del bloque de downsampling")
+    parser_wave.add_argument("--half", action="store_true", help="Partir canciones de validación por la mitad")
     parser_wave.add_argument("--layers", type=int, default=5, help="Cantidad de capas de U-Net")
     parser_wave.add_argument("--filters", type=int, default=10, help="Cantidad de filtros por capa U-Net")
     parser_wave.add_argument("--up", type=int, default=1, help="Tamaño del filtro del bloque de upsampling")
@@ -109,7 +110,7 @@ def main():
         train_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="train", target=args.target,
                                        duration=args.duration, samples=args.samples, random=True)
         valid_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="valid", target=args.target,
-                                       duration=None, samples=1, random=False)
+                                       duration=None, samples=1, random=False, half=args.half)
     # elif args.dataset == "medleydb":
     #     pass
     else:
