@@ -34,21 +34,22 @@ class Separator:
             self.models[stem].eval()
 
     def separate(self, track: torch.Tensor) -> Dict[str, ndarray]:
-        result = {}
-        for stem in self.stems:
-            estim = self.eval_model(stem, track)
-            result[stem] = estim.cpu().detach().numpy().T
-        track = track.cpu().detach().numpy().T
+        with torch.no_grad():
+            result = {}
+            for stem in self.stems:
+                estim = self.eval_model(stem, track)
+                result[stem] = estim.cpu().detach().numpy().T
+            track = track.cpu().detach().numpy().T
 
-        if not self.use_other:
-            result["other"] = track - (result["vocals"] + result["drums"] + result["bass"])
+            if not self.use_other:
+                result["other"] = track - (result["vocals"] + result["drums"] + result["bass"])
 
-        if self.use_vocals:
-            result["accompaniment"] = track - result["vocals"]
-        else:
-            result["accompaniment"] = result["drums"] + result["bass"] + result["other"]
+            if self.use_vocals:
+                result["accompaniment"] = track - result["vocals"]
+            else:
+                result["accompaniment"] = result["drums"] + result["bass"] + result["other"]
 
-        return result
+            return result
 
     def set_model(self, stem: str) -> None:
         raise NotImplementedError
