@@ -10,7 +10,6 @@ from dataset.dataset import MUSDB18Dataset
 from spectrogram_model.model import SpectrogramModel
 from spectrogram_model.stft import STFT
 from wave_model.model import WaveModel
-from blend_net.blend import BlendNet
 
 def train(network, optimizer, train_loader, device, stft):
     batch_loss, count = 0, 0
@@ -88,11 +87,6 @@ def main():
     parser_wave.add_argument("--filters", type=int, default=10, help="Cantidad de filtros por capa U-Net")
     parser_wave.add_argument("--up", type=int, default=1, help="Tamaño del filtro del bloque de upsampling")
 
-    # Mezcla de ambos modelos
-    parser_blend = subparsers.add_parser("blend", help="Modelo de mezcla")
-    parser_blend.add_argument("--stft-path", type=str, help="Ruta del modelo de STFT")
-    parser_blend.add_argument("--wave-path", type=str, help="Ruta del modelo de Wave")
-
     args = parser.parse_args()
 
     torch.autograd.set_detect_anomaly(True)
@@ -101,7 +95,6 @@ def main():
     print("GPU disponible:", use_cuda)
     device = torch.device("cuda:0" if use_cuda else "cpu")
 
-    stft = None
     if args.model == "spectrogram":
         model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft, args.hop]
         network = SpectrogramModel(*model_args).to(device)
@@ -109,9 +102,7 @@ def main():
     elif args.model == "wave":
         model_args = [args.channels, args.layers, args.filters, args.down, args.up]
         network = WaveModel(*model_args).to(device)
-    elif args.model == "blend":
-        model_args = [f"{args.stft_path}/{args.target}", f"{args.wave_path}/{args.target}", device]
-        network = BlendNet(*model_args).to(device)
+        stft = None
     else:
         raise NotImplementedError
 
