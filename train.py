@@ -102,6 +102,7 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
 
     stft = None
+    half = False
     if args.model == "spectrogram":
         model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft, args.hop]
         network = SpectrogramModel(*model_args).to(device)
@@ -109,6 +110,7 @@ def main():
     elif args.model == "wave":
         model_args = [args.channels, args.layers, args.filters, args.down, args.up]
         network = WaveModel(*model_args).to(device)
+        half = args.half
     elif args.model == "blend":
         model_args = [f"{args.stft_path}/{args.target}", f"{args.wave_path}/{args.target}", device]
         network = BlendNet(*model_args).to(device)
@@ -119,7 +121,7 @@ def main():
         train_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="train", target=args.target,
                                        duration=args.duration, samples=args.samples, random=True)
         valid_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="valid", target=args.target,
-                                       duration=None, samples=1, random=False, half=args.half)
+                                       duration=None, samples=1, random=False, half=half)
     # elif args.dataset == "medleydb":
     #     pass
     else:
