@@ -8,7 +8,7 @@ import tqdm
 from separator import *
 
 def merge_json(out_dir: str, track_name: str) -> None:
-    with open(f"{out_dir}1/test/{track_name}") as f1, open(f"{out_dir}2/test/{track_name}") as f2:
+    with open(f"{out_dir}1/test/{track_name}.json") as f1, open(f"{out_dir}2/test/{track_name}.json") as f2:
         data1 = json.load(f1)
         data2 = json.load(f2)
 
