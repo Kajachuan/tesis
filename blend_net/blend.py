@@ -58,17 +58,10 @@ class BlendNet(nn.Module):
         timesteps = data.size(-1)
 
         data = self.padding(wave)                                           # Dim: (n_batch, n_channels, timesteps + nfft)
-        print(data.shape)
         data = self.conv(data)                                              # Dim: (n_batch, n_channels * n_bins, n_frames)
-        print(data.shape)
         data = data.reshape(data.size(0), self.channels, -1, data.size(-1)) # Dim: (n_batch, n_channels, n_bins, n_frames)
-        print(data.shape)
-        data = torch.stack([data, stft])                                    # Dim: (n_batch, 2, n_channels, n_bins, n_frames)
-        print(data.shape)
+        data = torch.stack([data, stft], dim=1)                             # Dim: (n_batch, 2, n_channels, n_bins, n_frames)
         data = data.reshape(data.size(0), -1, data.size(-1))                # Dim: (n_batch, 2 * n_channels * n_bins, n_frames)
-        print(data.shape)
         data = self.deconv(data)                                            # Dim: (n_batch, n_channels, out_length)
-        print(data.shape)
         data = data[..., :timesteps]                                        # Dim: (n_batch, n_channels, timesteps)
-        print(data.shape)
         return data
