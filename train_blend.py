@@ -85,7 +85,7 @@ def main():
     print("Cargando modelo de Wave")
     wave_state = torch.load(f"{args.path_wave}/{args.target}/best_checkpoint", map_location=device)
     wave_model = WaveModel(*wave_state["args"]).to(device)
-    wave_mode.eval()
+    wave_model.eval()
 
     model_args = [stft_state["args"][0], stft_state["args"][-2], stft_state["args"][-1]]
     network = BlendNet(*model_args).to(device)
