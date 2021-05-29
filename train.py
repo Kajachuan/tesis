@@ -110,7 +110,7 @@ def main():
         model_args = [args.channels, args.layers, args.filters, args.down, args.up]
         network = WaveModel(*model_args).to(device)
     elif args.model == "blend":
-        model_args = [args.stft_path, args.wave_path, device]
+        model_args = [f"{args.stft_path}/{args.target}", f"{args.wave_path}/{args.target}", device]
         network = BlendNet(*model_args).to(device)
     else:
         raise NotImplementedError
