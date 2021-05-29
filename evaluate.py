@@ -56,6 +56,8 @@ def main():
     print("Cargando canciones de test")
     mus = musdb.DB(root=args.root, subsets='test')
 
+    os.makedirs(f"{args.output}/test", exist_ok=True)
+
     for i in tqdm.tqdm(range(args.init, args.end + 1)):
         track = mus.tracks[i]
         print(f"Canción {i}: {track.name}")
@@ -78,8 +80,9 @@ def main():
 
         merge_json(args.output, track.name)
 
-    os.rmdir(f"{args.output}1")
-    os.rmdir(f"{args.output}2")
+    for i in range(1, 3):
+        os.rmdir(f"{args.output}{i}/test")
+        os.rmdir(f"{args.output}{i}")
 
 if __name__ == '__main__':
     main()
