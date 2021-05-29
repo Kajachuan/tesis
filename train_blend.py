@@ -80,12 +80,18 @@ def main():
     print("Cargando modelo de STFT")
     stft_state = torch.load(f"{args.path_stft}/{args.target}/best_checkpoint", map_location=device)
     stft_model = SpectrogramModel(*stft_state["args"]).to(device)
+    stft_model.load_state_dict(stft_state["state_dict"])
     stft_model.eval()
+    for param in stft_model.features.parameters():
+        param.requires_grad = False
 
     print("Cargando modelo de Wave")
     wave_state = torch.load(f"{args.path_wave}/{args.target}/best_checkpoint", map_location=device)
     wave_model = WaveModel(*wave_state["args"]).to(device)
+    wave_model.load_state_dict(wave_state["state_dict"])
     wave_model.eval()
+    for param in wave_model.features.parameters():
+        param.requires_grad = False
 
     model_args = [stft_state["args"][0], stft_state["args"][-2], stft_state["args"][-1]]
     network = BlendNet(*model_args).to(device)
