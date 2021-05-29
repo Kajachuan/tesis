@@ -150,8 +150,7 @@ def main():
         best_loss = float("inf")
 
     out_path = f"{args.output}/{args.target}"
-    if not os.path.exists(out_path):
-        os.mkdir(out_path)
+    os.makedirs(out_path, exist_ok=True)
 
     t = tqdm.trange(initial_epoch, args.epochs + 1)
     for epoch in t:
