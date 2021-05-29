@@ -62,6 +62,7 @@ def main():
     parser.add_argument("--dataset", type=str, default="musdb", choices=["musdb", "medleydb"], help="Nombre del dataset")
     parser.add_argument("--duration", type=float, default=5.0, help="Duración de cada canción")
     parser.add_argument("--epochs", type=int, default=10, help="Número de épocas")
+    parser.add_argument("--half", action="store_true", help="Partir canciones de validación por la mitad")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
     parser.add_argument("--output", type=str, help="Directorio de salida")
     parser.add_argument("--root", type=str, help="Ruta del dataset")
@@ -83,7 +84,6 @@ def main():
     # Modelo de wave
     parser_wave = subparsers.add_parser("wave", help="Modelo de wave")
     parser_wave.add_argument("--down", type=int, default=1, help="Tamaño del filtro del bloque de downsampling")
-    parser_wave.add_argument("--half", action="store_true", help="Partir canciones de validación por la mitad")
     parser_wave.add_argument("--layers", type=int, default=5, help="Cantidad de capas de U-Net")
     parser_wave.add_argument("--filters", type=int, default=10, help="Cantidad de filtros por capa U-Net")
     parser_wave.add_argument("--up", type=int, default=1, help="Tamaño del filtro del bloque de upsampling")
@@ -102,7 +102,6 @@ def main():
     device = torch.device("cuda:0" if use_cuda else "cpu")
 
     stft = None
-    half = False
     if args.model == "spectrogram":
         model_args = [args.channels, args.hidden_size, args.layers, args.dropout, args.nfft, args.hop]
         network = SpectrogramModel(*model_args).to(device)
@@ -110,7 +109,6 @@ def main():
     elif args.model == "wave":
         model_args = [args.channels, args.layers, args.filters, args.down, args.up]
         network = WaveModel(*model_args).to(device)
-        half = args.half
     elif args.model == "blend":
         model_args = [f"{args.stft_path}/{args.target}", f"{args.wave_path}/{args.target}", device]
         network = BlendNet(*model_args).to(device)
@@ -121,7 +119,7 @@ def main():
         train_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="train", target=args.target,
                                        duration=args.duration, samples=args.samples, random=True)
         valid_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="valid", target=args.target,
-                                       duration=None, samples=1, random=False, half=half)
+                                       duration=None, samples=1, random=False, half=args.half)
     # elif args.dataset == "medleydb":
     #     pass
     else:
