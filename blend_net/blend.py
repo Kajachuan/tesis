@@ -28,7 +28,7 @@ class BlendNet(nn.Module):
         self.padding = nn.ZeroPad2d((0, self.nfft, 0, 0))
         self.conv = nn.Conv1d(in_channels=self.channels,
                               out_channels=self.channels * self.bins,
-                              kernel_size=self.nfft
+                              kernel_size=self.nfft,
                               stride=self.hop)
         self.deconv = nn.ConvTranspose1d(in_channels=2 * self.channels * self.bins,
                                          out_channels=self.channels,
