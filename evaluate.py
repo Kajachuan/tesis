@@ -25,8 +25,8 @@ def merge_json(out_dir: str, track_name: str) -> None:
     with open(f"{out_dir}/test/{track_name}.json", "w") as out:
         json.dump(data1, out, indent=2)
 
-    os.remove(f"{out_dir}1/{track_name}.json")
-    os.remove(f"{out_dir}2/{track_name}.json")
+    os.remove(f"{out_dir}1/test/{track_name}.json")
+    os.remove(f"{out_dir}2/test/{track_name}.json")
 
 def main():
     # Solo musdb por ahora !!
