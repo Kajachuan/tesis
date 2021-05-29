@@ -82,7 +82,7 @@ def main():
     stft_model = SpectrogramModel(*stft_state["args"]).to(device)
     stft_model.load_state_dict(stft_state["state_dict"])
     stft_model.eval()
-    for param in stft_model.features.parameters():
+    for param in stft_model.parameters():
         param.requires_grad = False
 
     print("Cargando modelo de Wave")
@@ -90,7 +90,7 @@ def main():
     wave_model = WaveModel(*wave_state["args"]).to(device)
     wave_model.load_state_dict(wave_state["state_dict"])
     wave_model.eval()
-    for param in wave_model.features.parameters():
+    for param in wave_model.parameters():
         param.requires_grad = False
 
     model_args = [stft_state["args"][0], stft_state["args"][-2], stft_state["args"][-1]]
