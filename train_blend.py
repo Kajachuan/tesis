@@ -21,10 +21,10 @@ def train(network, train_loader, device, stft_model, wave_model, optimizer):
         optimizer.zero_grad()
 
         with torch.no_grad():
-            _, stft, wave_stft = stft_model(x)
+            _, _, wave_stft = stft_model(x)
             wave = wave_model(x)
 
-        y_hat = network(stft, wave_stft, wave)
+        y_hat = network(wave_stft, wave)
         loss = mse_loss(y_hat, y)
         loss.backward()
         optimizer.step()
