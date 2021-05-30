@@ -57,8 +57,8 @@ class BlendNet(nn.Module):
         mag = mag.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames)
         mag = self.prelu_mag(mag) # Dim = (n_batch, n_channels, n_bins, n_frames)
 
-        estim_stft = torch.stack((mag * torch.cos(phase_stft),
-                                  mag * torch.sin(phase_stft)), dim=-1)
+        estim_stft = torch.stack((mag * torch.cos(phase_stft + phase_wave),
+                                  mag * torch.sin(phase_stft + phase_wave)), dim=-1)
         blend_stft = self.stft(estim_stft, inverse=True)
 
         # Mezcla con Wave
