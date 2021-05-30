@@ -41,9 +41,9 @@ def valid(network, valid_loader, device, stft_model, wave_model):
             pbar.set_description("Validando")
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
 
-            _, stft, wave_stft = stft_model(x)
+            _, _, wave_stft = stft_model(x)
             wave = wave_model(x)
-            y_hat = network(stft, wave_stft, wave)
+            y_hat = network(wave_stft, wave)
 
             loss = mse_loss(y_hat, y)
             batch_loss += loss.item() * y.size(0)
