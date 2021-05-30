@@ -65,7 +65,7 @@ class BlendNet(nn.Module):
         blend_wave = self.tanh(data) # Dim = (n_batch, n_channels, timesteps)
 
         # Mezclo todo
-        wave_stft = wave # Borrar después
+        blend_stft = blend_wave # Borrar después
         data = torch.stack([wave_stft, wave, blend_stft, blend_wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 4)
         data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 4)
         data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 4)
