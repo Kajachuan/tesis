@@ -23,8 +23,8 @@ class BlendNet(nn.Module):
 
         self.stft = STFT(self.nfft, self.hop)
 
-        self.linear_mag = nn.Linear(in_features=self.bins * self.channels, out_features=self.bins * self.channels)
-        self.prelu_mag = nn.PReLU(num_parameters=self.channels)
+        # self.linear_mag = nn.Linear(in_features=self.bins * self.channels, out_features=self.bins * self.channels)
+        # self.prelu_mag = nn.PReLU(num_parameters=self.channels)
 
         self.linear_wave = nn.Linear(in_features=2 * self.channels, out_features=self.channels)
 
@@ -41,20 +41,20 @@ class BlendNet(nn.Module):
             Separación de dimensión (n_batch, n_channels, timesteps)
         """
         # Mezcla con STFT
-        stft = self.stft((wave_stft + wave) / 2)
-        mag, phase = stft[..., 0], stft[..., 1]
-        mag = 10 * torch.log10(torch.clamp(mag, min=1e-8)) # Dim = (n_batch, n_channels, n_bins, n_frames)
-
-        mag = mag.transpose(1, 3) # Dim = (n_batch, n_frames, n_bins, n_channels)
-        mag = mag.reshape(mag.size(0), mag.size(1), -1) # Dim = (n_batch, n_frames, n_bins * n_channels)
-        mag = self.linear_mag(mag) # Dim = (n_batch, n_frames, n_bins * n_channels)
-        mag = mag.reshape(mag.size(0), mag.size(1), -1, self.channels) # Dim = (n_batch, n_frames, n_bins, n_channels)
-        mag = mag.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames)
-        mag = self.prelu_mag(mag) # Dim = (n_batch, n_channels, n_bins, n_frames)
-
-        estim_stft = torch.stack((mag * torch.cos(phase),
-                                  mag * torch.sin(phase)), dim=-1)
-        blend_stft = self.stft(estim_stft, inverse=True)
+        # stft = self.stft((wave_stft + wave) / 2)
+        # mag, phase = stft[..., 0], stft[..., 1]
+        # mag = 10 * torch.log10(torch.clamp(mag, min=1e-8)) # Dim = (n_batch, n_channels, n_bins, n_frames)
+        #
+        # mag = mag.transpose(1, 3) # Dim = (n_batch, n_frames, n_bins, n_channels)
+        # mag = mag.reshape(mag.size(0), mag.size(1), -1) # Dim = (n_batch, n_frames, n_bins * n_channels)
+        # mag = self.linear_mag(mag) # Dim = (n_batch, n_frames, n_bins * n_channels)
+        # mag = mag.reshape(mag.size(0), mag.size(1), -1, self.channels) # Dim = (n_batch, n_frames, n_bins, n_channels)
+        # mag = mag.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames)
+        # mag = self.prelu_mag(mag) # Dim = (n_batch, n_channels, n_bins, n_frames)
+        #
+        # estim_stft = torch.stack((mag * torch.cos(phase),
+        #                           mag * torch.sin(phase)), dim=-1)
+        # blend_stft = self.stft(estim_stft, inverse=True)
 
         # Mezcla con Wave
         data = torch.stack([wave_stft, wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 2)
@@ -65,6 +65,7 @@ class BlendNet(nn.Module):
         blend_wave = self.tanh(data) # Dim = (n_batch, n_channels, timesteps)
 
         # Mezclo todo
+        wave_stft = wave # Borrar después
         data = torch.stack([wave_stft, wave, blend_stft, blend_wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 4)
         data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 4)
         data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 4)
