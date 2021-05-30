@@ -21,7 +21,7 @@ class BlendNet(nn.Module):
         self.bins = self.nfft // 2 + 1
         self.hop = hop
 
-        self.stft = STFT(self.n_fft, self.hop)
+        self.stft = STFT(self.nfft, self.hop)
 
         self.linear_mag = nn.Linear(in_features=2 * self.bins * self.channels, out_features=self.bins * self.channels)
         self.prelu_mag = nn.PReLU(num_parameters=self.channels)
