@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from spectrogram_model.stft import STFT
+from utils.stft import STFT
 from spectrogram_model.batch_norm import BatchNorm
 from spectrogram_model.blstm import BLSTM
 from spectrogram_model.mask import Mask

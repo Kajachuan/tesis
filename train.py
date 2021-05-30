@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
 from spectrogram_model.model import SpectrogramModel
-from spectrogram_model.stft import STFT
+from utils.stft import STFT
 from wave_model.model import WaveModel
 
 def train(network, optimizer, train_loader, device, stft):
