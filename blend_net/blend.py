@@ -23,7 +23,7 @@ class BlendNet(nn.Module):
 
         self.stft = STFT(self.nfft, self.hop)
 
-        self.linear_mag = nn.Linear(in_features=2 * self.bins * self.channels, out_features=self.bins * self.channels)
+        self.linear_mag = nn.Linear(in_features=2 * self.bins * self.channels, out_features=2 * self.bins * self.channels)
         self.prelu_mag = nn.PReLU(num_parameters=self.channels)
 
         self.linear_wave = nn.Linear(in_features=2 * self.channels, out_features=self.channels)
@@ -52,13 +52,14 @@ class BlendNet(nn.Module):
         mag = torch.stack([mag_stft, mag_wave], dim=-1) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
         mag = mag.transpose(1, 3) # Dim = (n_batch, n_frames, n_bins, n_channels, 2)
         mag = mag.reshape(mag.size(0), mag.size(1), -1) # Dim = (n_batch, n_frames, n_bins * n_channels * 2)
-        mag = self.linear_mag(mag) # Dim = (n_batch, n_frames, n_bins * n_channels)
-        mag = mag.reshape(mag.size(0), mag.size(1), -1, self.channels) # Dim = (n_batch, n_frames, n_bins, n_channels)
-        mag = mag.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames)
-        mag = self.prelu_mag(mag) # Dim = (n_batch, n_channels, n_bins, n_frames)
+        mag = self.linear_mag(mag) # Dim = (n_batch, n_frames, n_bins * n_channels * 2)
+        mag = mag.reshape(mag.size(0), mag.size(1), -1, self.channels, 2) # Dim = (n_batch, n_frames, n_bins, n_channels, 2)
+        mag = mag.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
+        mag = self.prelu_mag(mag) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
+        mag_stft, mag_wave = mag[..., 0], mag[..., 1]
 
-        estim_stft = torch.stack((mag * torch.cos(phase_stft + phase_wave),
-                                  mag * torch.sin(phase_stft + phase_wave)), dim=-1)
+        estim_stft = torch.stack((mag * torch.cos(phase_stft) + mag * torch.cos(phase_wave),
+                                  mag * torch.sin(phase_stft) + mag * torch.sin(phase_wave)), dim=-1)
         blend_stft = self.stft(estim_stft, inverse=True)
 
         # Mezcla con Wave
