@@ -36,8 +36,6 @@ class BlendNet(nn.Module):
                            )
 
         self.linear_output = nn.Sequential(
-                                 nn.Linear(in_features=4 * self.channels, out_features=2 * self.channels),
-                                 nn.Tanh(),
                                  nn.Linear(in_features=2 * self.channels, out_features=self.channels),
                                  nn.Tanh()
                              )
@@ -78,9 +76,9 @@ class BlendNet(nn.Module):
         blend_wave = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps)
 
         # Mezclo todo
-        data = torch.stack([wave_stft, wave, blend_stft, blend_wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 4)
-        data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 4)
-        data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 4)
+        data = torch.stack([blend_stft, blend_wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 2)
+        data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 2)
+        data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 2)
         data = self.linear_output(data) # Dim = (n_batch, timesteps, n_channels)
         data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps)
         return data
