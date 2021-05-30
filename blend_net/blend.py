@@ -67,8 +67,6 @@ class BlendNet(nn.Module):
         phase = phase.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames)
         phase = self.prelu_phase(phase) # Dim = (n_batch, n_channels, n_bins, n_frames)
 
-        phase = (phase_stft + phase_wave) / 2
-
         estim_stft = torch.stack((mag * torch.cos(phase),
                                   mag * torch.sin(phase)), dim=-1)
         blend_stft = self.stft(estim_stft, inverse=True)
