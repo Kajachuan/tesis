@@ -26,9 +26,6 @@ class BlendNet(nn.Module):
         self.linear_mag = nn.Linear(in_features=2 * self.bins * self.channels, out_features=self.bins * self.channels)
         self.prelu_mag = nn.PReLU(num_parameters=self.channels)
 
-        self.linear_phase = nn.Linear(in_features=2 * self.channels, out_features=self.channels)
-        self.prelu_phase = nn.PReLU(num_parameters=self.channels)
-
         self.linear_wave = nn.Linear(in_features=2 * self.channels, out_features=self.channels)
 
         self.linear_output = nn.Linear(in_features=4 * self.channels, out_features=self.channels)
@@ -60,12 +57,7 @@ class BlendNet(nn.Module):
         mag = mag.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames)
         mag = self.prelu_mag(mag) # Dim = (n_batch, n_channels, n_bins, n_frames)
 
-        phase = torch.stack([phase_stft, phase_wave], dim=-1) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
-        phase = phase.transpose(1, 3) # Dim = (n_batch, n_frames, n_bins, n_channels, 2)
-        phase = phase.reshape(phase.size(0), phase.size(1), phase.size(2), -1) # Dim = (n_batch, n_frames, n_bins, n_channels * 2)
-        phase = self.linear_phase(phase) # Dim = (n_batch, n_frames, n_bins, n_channels)
-        phase = phase.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames)
-        phase = self.prelu_phase(phase) # Dim = (n_batch, n_channels, n_bins, n_frames)
+        phase = (phase_stft + phase_wave) / 2
 
         estim_stft = torch.stack((mag * torch.cos(phase),
                                   mag * torch.sin(phase)), dim=-1)
