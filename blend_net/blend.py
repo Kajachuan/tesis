@@ -25,19 +25,19 @@ class BlendNet(nn.Module):
 
         self.linear_stft = nn.Sequential(
                                nn.Linear(in_features=2 * self.bins * self.channels, out_features=2 * self.bins),
-                               nn.PReLU(),
+                               nn.ReLU(),
                                nn.Linear(in_features=2 * self.bins, out_features=2),
                                nn.Sigmoid()
                            )
 
         self.linear_wave = nn.Sequential(
-                               nn.Linear(in_features=2 * self.channels, out_features=self.channels),
-                               nn.Tanh()
+                               nn.Linear(in_features=2 * self.channels, out_features=2),
+                               nn.Sigmoid()
                            )
 
         self.linear_output = nn.Sequential(
-                                 nn.Linear(in_features=2 * self.channels, out_features=self.channels),
-                                 nn.Tanh()
+                                 nn.Linear(in_features=4 * self.channels, out_features=4),
+                                 nn.Sigmoid()
                              )
 
     def forward(self, wave_stft: torch.Tensor, wave: torch.Tensor) -> torch.Tensor:
@@ -72,13 +72,15 @@ class BlendNet(nn.Module):
         data = torch.stack([wave_stft, wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 2)
         data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 2)
         data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 2)
-        data = self.linear_wave(data) # Dim = (n_batch, timesteps, n_channels)
-        blend_wave = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps)
+        data = self.linear_wave(data) # Dim = (n_batch, timesteps, 2)
+        data = data.unsqueeze(1) # Dim = (n_batch, 1, timesteps, 2)
+        blend_wave = data[..., 0] * wave_stft + data[..., 1] * wave
 
         # Mezclo todo
-        data = torch.stack([blend_stft, blend_wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 2)
-        data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 2)
-        data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 2)
-        data = self.linear_output(data) # Dim = (n_batch, timesteps, n_channels)
-        data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps)
+        data = torch.stack([blend_stft, blend_wave, wave_stft, wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 4)
+        data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 4)
+        data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 4)
+        data = self.linear_output(data) # Dim = (n_batch, timesteps, 4)
+        data = data.unsqueeze(1) # Dim = (n_batch, 1, timesteps, 4)
+        data = data[..., 0] * blend_stft + data[..., 1] * blend_wave + data[..., 2] * wave_stft + data[..., 3] * wave
         return data
