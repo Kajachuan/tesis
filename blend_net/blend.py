@@ -21,7 +21,7 @@ class BlendNet(nn.Module):
         self.nfft = nfft
         self.bins = self.nfft // 2 + 1
         self.hop = hop
-        hidden = self.hop // 4
+        hidden = 64
         layers = 2
         blend = 2
 
@@ -103,6 +103,6 @@ class BlendNet(nn.Module):
         data = self.linear_output(data) # Dim = (n_batch, timesteps, n_channels * 2)
         data = self.sigmoid(data) # Dim = (n_batch, timesteps, n_channels * 2)
         data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 2)
-        data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps, 2) 
+        data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps, 2)
         data = data[..., 0] * blend_stft + data[..., 1] * blend_wave
         return data
