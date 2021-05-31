@@ -21,23 +21,42 @@ class BlendNet(nn.Module):
         self.nfft = nfft
         self.bins = self.nfft // 2 + 1
         self.hop = hop
+        hidden = self.hop // 4
+        layers = 2
+        blend = 2
 
         self.stft = STFT(self.nfft, self.hop)
 
-        self.linear_stft = nn.Sequential(
-                               nn.Linear(in_features=2 * self.bins * self.channels, out_features=2 * self.bins),
+        self.stft_branch = nn.Sequential(
+                               nn.LSTM(input_size=blend * self.bins * self.channels,
+                                       hidden_size=hidden,
+                                       num_layers=layers,
+                                       batch_first=True,
+                                       dropout=dropout,
+                                       bidirectional=True),
+                               nn.Linear(in_features=2 * hidden, out_features=blend * self.bins),
                                nn.Sigmoid(),
-                               nn.Dropout(p=dropout)
                            )
 
-        self.linear_wave = nn.Sequential(
-                               nn.Linear(in_features=2 * self.channels, out_features=2),
+        self.wave_branch = nn.Sequential(
+                               nn.LSTM(input_size=blend * self.channels,
+                                       hidden_size=hidden,
+                                       num_layers=layers,
+                                       batch_first=True,
+                                       dropout=dropout,
+                                       bidirectional=True),
+                               nn.Linear(in_features=2 * hidden, out_features=blend),
                                nn.Sigmoid(),
-                               nn.Dropout(p=dropout)
                            )
 
-        self.linear_output = nn.Sequential(
-                                 nn.Linear(in_features=2 * self.channels, out_features=2),
+        self.output_branch = nn.Sequential(
+                                 nn.LSTM(input_size=blend * self.channels,
+                                         hidden_size=hidden,
+                                         num_layers=layers,
+                                         batch_first=True,
+                                         dropout=dropout,
+                                         bidirectional=True),
+                                 nn.Linear(in_features=2 * hidden, out_features=blend),
                                  nn.Sigmoid()
                              )
 
@@ -61,7 +80,7 @@ class BlendNet(nn.Module):
         data = 10 * torch.log10(torch.clamp(data, min=1e-8)) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
         data = data.transpose(1, 3) # Dim = (n_batch, n_frames, n_bins, n_channels, 2)
         data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, n_frames, n_bins * n_channels * 2)
-        data = self.linear_stft(data) # Dim = (n_batch, n_frames, n_bins * 2)
+        data = self.stft_branch(data) # Dim = (n_batch, n_frames, n_bins * 2)
         data = data.reshape(data.size(0), 1, self.bins, data.size(1), 2) # Dim = (n_batch, 1, n_bins, n_frames, 2)
 
         estim_stft = torch.stack((data[..., 0] * (mag_stft * torch.cos(phase_stft)) +
@@ -74,7 +93,7 @@ class BlendNet(nn.Module):
         data = torch.stack([wave_stft, wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 2)
         data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 2)
         data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 2)
-        data = self.linear_wave(data) # Dim = (n_batch, timesteps, 2)
+        data = self.wave_branch(data) # Dim = (n_batch, timesteps, 2)
         data = data.unsqueeze(1) # Dim = (n_batch, 1, timesteps, 2)
         blend_wave = data[..., 0] * wave_stft + data[..., 1] * wave
 
@@ -82,7 +101,7 @@ class BlendNet(nn.Module):
         data = torch.stack([blend_stft, blend_wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 2)
         data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 2)
         data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 2)
-        data = self.linear_output(data) # Dim = (n_batch, timesteps, 2)
+        data = self.output_branch(data) # Dim = (n_batch, timesteps, 2)
         data = data.unsqueeze(1) # Dim = (n_batch, 1, timesteps, 2)
         data = data[..., 0] * blend_stft + data[..., 1] * blend_wave
         return data
