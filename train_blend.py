@@ -59,9 +59,9 @@ def main():
     parser.add_argument("--dropout", type=float, default=0, help="Dropout de las capas ocultas")
     parser.add_argument("--duration", type=float, default=5.0, help="Duración de cada canción")
     parser.add_argument("--epochs", type=int, default=10, help="Número de épocas")
-    parser.add_argument("--half", action="store_true", help="Partir canciones de validación por la mitad")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
     parser.add_argument("--output", type=str, help="Directorio de salida")
+    parser.add_argument("--partitions", type=int, default=1, help="Número de partes de las canciones de validación")
     parser.add_argument("--path-stft", type=str, help="Ruta del modelo de STFT")
     parser.add_argument("--path-wave", type=str, help="Ruta del modelo de Wave")
     parser.add_argument("--root", type=str, help="Ruta del dataset")
@@ -101,7 +101,7 @@ def main():
         train_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="train", target=args.target,
                                        duration=args.duration, samples=args.samples, random=True)
         valid_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="valid", target=args.target,
-                                       duration=None, samples=1, random=False, half=args.half)
+                                       duration=None, samples=1, random=False, partitions=args.partitions)
     # elif args.dataset == "medleydb":
     #     pass
     else:
