@@ -56,7 +56,7 @@ def main():
     parser.add_argument("--channels", type=int, default=2, help="Número de canales de audio")
     parser.add_argument("--checkpoint", type=str, help="Directorio de los checkpoints")
     parser.add_argument("--dataset", type=str, default="musdb", choices=["musdb", "medleydb"], help="Nombre del dataset")
-    parser.add_argument("--dropout", type=int, default="0", help="Dropout de las capas ocultas")
+    parser.add_argument("--dropout", type=float, default=0, help="Dropout de las capas ocultas")
     parser.add_argument("--duration", type=float, default=5.0, help="Duración de cada canción")
     parser.add_argument("--epochs", type=int, default=10, help="Número de épocas")
     parser.add_argument("--half", action="store_true", help="Partir canciones de validación por la mitad")
