@@ -21,7 +21,7 @@ class BlendNet(nn.Module):
         self.nfft = nfft
         self.bins = self.nfft // 2 + 1
         self.hop = hop
-        hidden = 64
+        hidden = 16
         layers = 2
         blend = 2
 
