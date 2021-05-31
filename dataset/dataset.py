@@ -63,7 +63,7 @@ class MUSDB18Dataset(Dataset):
             track = self.mus[index // self.partitions]
 
             chunk = track.duration // self.partitions
-            trach.chunk_start = (index % self.partitions) * chunk
+            track.chunk_start = (index % self.partitions) * chunk
             if (index + 1) % self.partitions == 0:
                 track.chunk_duration = track.duration - track.chunk_start
             else:
