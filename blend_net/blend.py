@@ -75,6 +75,8 @@ class BlendNet(nn.Module):
         data = self.conv_stft(data) # Dim = (n_batch, 64, bins_out, n_frames)
         data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 64 * bins_out, n_frames)
         data = data.transpose(1, 2) # Dim = (n_batch, n_frames, 64 * bins_out)
+        print(data.shape)
+        print(4 * (self.bins - 14))
         data = self.linear_stft(data) # Dim = (n_batch, n_frames, 2 * n_bins * n_channels)
         data = data.reshape(data.size(0), data.size(1), self.bins, self.channels, -1) # Dim = (n_batch, n_frames, n_bins, n_channels, 2)
         data = data.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
