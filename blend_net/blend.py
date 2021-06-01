@@ -40,10 +40,10 @@ class BlendNet(nn.Module):
                                        kernel_size=3,
                                        padding=(0, 1)),
                              nn.MaxPool2d(kernel_size=(2, 1))
-                         ) # h_out = (h_in - 14) / 8, w_out = w_in
+                         ) # h_out = (h_in - 14) // 8, w_out = w_in
 
-        self.linear_stft = nn.Linear(in_features=4 * (self.bins - 14),
-                                     out_features=blend * self.bins * self.channels) # 32 * (in - 14) / 8 = 4 * (in - 14)
+        self.linear_stft = nn.Linear(in_features=(self.bins - 14) // 8 * 32,
+                                     out_features=blend * self.bins * self.channels)
 
         self.lstm_wave = nn.LSTM(input_size=(blend + 1) * self.channels,
                                  hidden_size=16,
@@ -72,11 +72,9 @@ class BlendNet(nn.Module):
         data = torch.stack((mag_stft, mag_wave), dim=1) # Dim = (n_batch, 2, n_channels, n_bins, n_frames)
         data = 10 * torch.log10(torch.clamp(data, min=1e-8)) # Dim = (n_batch, 2, n_channels, n_bins, n_frames)
         data = data.reshape(data.size(0), -1, data.size(-2), data.size(-1)) # Dim = (n_batch, 2 * n_channels, n_bins, n_frames)
-        data = self.conv_stft(data) # Dim = (n_batch, 64, bins_out, n_frames)
-        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 64 * bins_out, n_frames)
-        data = data.transpose(1, 2) # Dim = (n_batch, n_frames, 64 * bins_out)
-        print(data.shape)
-        print(4 * (self.bins - 14))
+        data = self.conv_stft(data) # Dim = (n_batch, 32, bins_out, n_frames)
+        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 32 * bins_out, n_frames)
+        data = data.transpose(1, 2) # Dim = (n_batch, n_frames, 32 * bins_out)
         data = self.linear_stft(data) # Dim = (n_batch, n_frames, 2 * n_bins * n_channels)
         data = data.reshape(data.size(0), data.size(1), self.bins, self.channels, -1) # Dim = (n_batch, n_frames, n_bins, n_channels, 2)
         data = data.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
