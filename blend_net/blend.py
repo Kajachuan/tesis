@@ -45,11 +45,7 @@ class BlendNet(nn.Module):
         self.linear_stft = nn.Linear(in_features=(self.bins - 14) // 8 * 32,
                                      out_features=blend * self.bins * self.channels)
 
-        self.lstm_wave = nn.LSTM(input_size=(blend + 1) * self.channels,
-                                 hidden_size=16,
-                                 num_layers=1,
-                                 batch_first=True)
-        self.linear_wave = nn.Linear(in_features=16, out_features=(blend + 1) * self.channels)
+        self.linear_wave = nn.Linear(in_features=(blend + 1) * self.channels, out_features=(blend + 1) * self.channels)
 
         self.activation = nn.Softmax(dim=-1)
 
@@ -90,7 +86,6 @@ class BlendNet(nn.Module):
         data = torch.stack([wave_stft, wave, blend_stft], dim=-1) # Dim = (n_batch, n_channels, timesteps, 3)
         data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 3)
         data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 3)
-        data = self.lstm_wave(data)[0] # Dim = (n_batch, timesteps, hidden_size)
         data = self.linear_wave(data) # Dim = (n_batch, timesteps, n_channels * 3)
         data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
         data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps, 3)
