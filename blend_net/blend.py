@@ -21,8 +21,8 @@ class BlendNet(nn.Module):
         self.nfft = nfft
         self.bins = self.nfft // 2 + 1
         self.hop = hop
-        hidden = 16
-        layers = 2
+        hidden = 10
+        layers = 1
         blend = 2
 
         self.stft = STFT(self.nfft, self.hop)
@@ -43,13 +43,7 @@ class BlendNet(nn.Module):
                                  bidirectional=True)
         self.linear_wave = nn.Linear(in_features=2 * hidden, out_features=blend * self.channels)
 
-        self.lstm_output = nn.LSTM(input_size=blend * self.channels,
-                                   hidden_size=hidden,
-                                   num_layers=layers,
-                                   batch_first=True,
-                                   dropout=dropout,
-                                   bidirectional=True)
-        self.linear_output = nn.Linear(in_features=2 * hidden, out_features=blend * self.channels)
+        self.linear_output = nn.Linear(in_features=blend * self.channels, out_features=blend * self.channels)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, wave_stft: torch.Tensor, wave: torch.Tensor) -> torch.Tensor:
@@ -99,7 +93,6 @@ class BlendNet(nn.Module):
         data = torch.stack([blend_stft, blend_wave], dim=-1) # Dim = (n_batch, n_channels, timesteps, 2)
         data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 2)
         data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 2)
-        data = self.lstm_output(data)[0] # Dim = (n_batch, timesteps, 2 * hidden_size)
         data = self.linear_output(data) # Dim = (n_batch, timesteps, n_channels * 2)
         data = self.sigmoid(data) # Dim = (n_batch, timesteps, n_channels * 2)
         data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 2)
