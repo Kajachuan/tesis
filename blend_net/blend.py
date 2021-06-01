@@ -42,8 +42,8 @@ class BlendNet(nn.Module):
                              nn.MaxPool2d(kernel_size=(2, 1))
                          ) # h_out = (h_in - 14) / 8, w_out = w_in
 
-        self.linear_stft = nn.Linear(in_features=8 * (self.bins - 14),
-                                     out_features=blend * self.bins * self.channels) # 64 * (in - 14) / 8 = 8 * (in - 14)
+        self.linear_stft = nn.Linear(in_features=4 * (self.bins - 14),
+                                     out_features=blend * self.bins * self.channels) # 32 * (in - 14) / 8 = 4 * (in - 14)
 
         self.lstm_wave = nn.LSTM(input_size=(blend + 1) * self.channels,
                                  hidden_size=16,
