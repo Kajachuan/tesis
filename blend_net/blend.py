@@ -8,13 +8,12 @@ class BlendNet(nn.Module):
     """
     Modelo de mezcla de modelos de espectrograma y wave
     """
-    def __init__(self, channels: int, nfft: int, hop: int, dropout: int) -> None:
+    def __init__(self, channels: int, nfft: int, hop: int) -> None:
         """
         Argumentos:
             channels -- Número de canales de audio
             nfft -- Número de puntos para calcular la nfft
             hop -- Número de puntos de hop
-            dropout -- Probabilidad de dropout
         """
         super(BlendNet, self).__init__()
         self.channels = channels
@@ -22,7 +21,7 @@ class BlendNet(nn.Module):
         self.bins = self.nfft // 2 + 1
         self.hop = hop
         hidden = 10
-        layers = 2
+        layers = 1
         blend = 2
 
         self.stft = STFT(self.nfft, self.hop)
@@ -31,7 +30,6 @@ class BlendNet(nn.Module):
                                  hidden_size=hidden,
                                  num_layers=layers,
                                  batch_first=True,
-                                 dropout=dropout,
                                  bidirectional=True)
         self.linear_stft = nn.Linear(in_features=2 * hidden, out_features=blend * self.bins * self.channels)
 
@@ -39,7 +37,6 @@ class BlendNet(nn.Module):
                                  hidden_size=hidden,
                                  num_layers=layers,
                                  batch_first=True,
-                                 dropout=dropout,
                                  bidirectional=True)
         self.linear_wave = nn.Linear(in_features=2 * hidden, out_features=blend * self.channels)
 
