@@ -45,7 +45,30 @@ class BlendNet(nn.Module):
         self.linear_stft = nn.Linear(in_features=(self.bins - 14) // 8 * 32,
                                      out_features=blend * self.bins * self.channels)
 
-        self.linear_wave = nn.Linear(in_features=(blend + 1) * self.channels, out_features=(blend + 1) * self.channels)
+        self.conv_wave = nn.Sequential(
+                             nn.Conv1d(in_channels=(blend + 1) * self.channels,
+                                       out_channels=8,
+                                       kernel_size=3,
+                                       padding=1),
+                             nn.Conv1d(in_channels=8,
+                                       out_channels=16,
+                                       kernel_size=3,
+                                       padding=1),
+                             nn.Conv1d(in_channels=16,
+                                       out_channels=32,
+                                       kernel_size=3,
+                                       padding=1),
+                             nn.Conv1d(in_channels=32,
+                                       out_channels=64,
+                                       kernel_size=3,
+                                       padding=1),
+                             nn.Conv1d(in_channels=64,
+                                       out_channels=128,
+                                       kernel_size=3,
+                                       padding=1),
+                         )
+
+        self.linear_wave = nn.Linear(in_features=128, out_features=(blend + 1) * self.channels)
 
         self.activation = nn.Softmax(dim=-1)
 
@@ -83,9 +106,10 @@ class BlendNet(nn.Module):
         blend_stft = self.stft(estim_stft, inverse=True)
 
         # Mezcla con Wave
-        data = torch.stack([wave_stft, wave, blend_stft], dim=-1) # Dim = (n_batch, n_channels, timesteps, 3)
-        data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels, 3)
-        data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, timesteps, n_channels * 3)
+        data = torch.stack([wave_stft, wave, blend_stft], dim=1) # Dim = (n_batch, 3, n_channels, timesteps)
+        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 3 * n_channels, timesteps)
+        data = self.conv_wave(data) # Dim = (n_batch, 128, timesteps)
+        data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 128)
         data = self.linear_wave(data) # Dim = (n_batch, timesteps, n_channels * 3)
         data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
         data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps, 3)
