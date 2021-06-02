@@ -4,6 +4,74 @@ from utils.stft import STFT
 from spectrogram_model.model import SpectrogramModel
 from wave_model.model import WaveModel
 
+class STFTConvLayer(nn.Module):
+    def __init__(self, features: int, in_channels: int, out_channels: int = -1) -> None:
+        """
+        Argumentos:
+            features -- Número de características de entrada (no del BatchNorm)
+            in_channels -- Número de canales de entrada
+            out_channels -- Número de canales de salida
+        """
+        self.features = features
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        if out_channels == -1:
+            self.out_channels = 2 * self.in_channels
+        self.conv = nn.Conv2d(in_channels=self.in_channels,
+                              out_channels=self.out_channels,
+                              kernel_size=3,
+                              padding=(0,1))
+        self.pool = nn.MaxPool2d(kernel_size=(2, 1))
+        self.batch_norm = nn.BatchNorm1d((self.features - 2) // 2)
+
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
+        """
+        Argumentos:
+            data -- Datos de entrada de dimensión (n_batch, in_channels, features, n_frames)
+
+        Retorna:
+            Resultado de dimensión (n_batch, out_channels, (features - 2) // 2, n_frames)
+        """
+        data = self.conv(data) # Dim = (n_batch, out_channels, features - 2, n_frames)
+        data = self.pool(data) # Dim = (n_batch, out_channels, (features - 2) / 2, n_frames)
+        data = data.transpose(1, 2) # Dim = (n_batch, (features - 2) / 2, out_channels, n_frames)
+        data = data.reshape(data.size(0), data.size(1), -1) # Dim = (n_batch, (features - 2) / 2, out_channels * n_frames)
+        data = self.batch_norm(data) # Dim = (n_batch, (features - 2) / 2, out_channels * n_frames)
+        data = data.reshape(data.size(0), data.size(1), self.out_channels, -1) # Dim = (n_batch, (features - 2) / 2, out_channels, n_frames)
+        data = data.transpose(1, 2) # Dim = (n_batch, out_channels, (features - 2) / 2, n_frames)
+        return data
+
+class WaveConvLayer(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int = -1) -> None:
+        """
+        Argumentos:
+            in_channels -- Número de canales de entrada
+            out_channels -- Número de canales de salida
+        """
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        if out_channels == -1:
+            self.out_channels = 2 * self.in_channels
+        self.conv = nn.Conv1d(in_channels=self.in_channels,
+                              out_channels=self.out_channels,
+                              kernel_size=3,
+                              padding=1)
+        self.batch_norm = nn.BatchNorm1d(self.out_channels)
+        self.relu = nn.LeakyReLU()
+
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
+        """
+        Argumentos:
+            data -- Datos de entrada de dimensión (n_batch, in_channels, timesteps)
+
+        Retorna:
+            Resultado de dimensión (n_batch, out_channels, timesteps)
+        """
+        data = self.conv(data) # Dim = (n_batch, out_channels, timesteps)
+        data = self.batch_norm(data) # Dim = (n_batch, out_channels, timesteps)
+        data = self.relu(data) # Dim = (n_batch, out_channels, timesteps)
+        return data
+
 class BlendNet(nn.Module):
     """
     Modelo de mezcla de modelos de espectrograma y wave
@@ -25,47 +93,29 @@ class BlendNet(nn.Module):
         self.stft = STFT(self.nfft, self.hop)
 
         self.conv_stft = nn.Sequential(
-                             nn.Conv2d(in_channels=blend * self.channels,
-                                       out_channels=8,
-                                       kernel_size=3,
-                                       padding=(0, 1)),
-                             nn.MaxPool2d(kernel_size=(2, 1)),
-                             nn.Conv2d(in_channels=8,
-                                       out_channels=16,
-                                       kernel_size=3,
-                                       padding=(0, 1)),
-                             nn.MaxPool2d(kernel_size=(2, 1)),
-                             nn.Conv2d(in_channels=16,
-                                       out_channels=32,
-                                       kernel_size=3,
-                                       padding=(0, 1)),
-                             nn.MaxPool2d(kernel_size=(2, 1))
-                         ) # h_out = (h_in - 14) // 8, w_out = w_in
+                             STFTConvLayer(features=self.bins,
+                                           in_channels=blend * self.channels,
+                                           out_channels=8),
+                             STFTConvLayer(features=(self.bins - 2) // 2,
+                                           in_channels=8),
+                             STFTConvLayer(features=(self.bins - 6) // 4,
+                                           in_channels=16),
+                             STFTConvLayer(features=(self.bins - 14) // 8,
+                                           in_channels=32),
+                             STFTConvLayer(features=(self.bins - 30) // 16,
+                                           in_channels=64)
+                         ) # h_out = (h_in - 62) // 32, w_out = w_in, out_channels = 128
 
-        self.linear_stft = nn.Linear(in_features=(self.bins - 14) // 8 * 32,
+        self.linear_stft = nn.Linear(in_features=(self.bins - 62) // 32 * 128,
                                      out_features=blend * self.bins * self.channels)
 
         self.conv_wave = nn.Sequential(
-                             nn.Conv1d(in_channels=(blend + 1) * self.channels,
-                                       out_channels=8,
-                                       kernel_size=3,
-                                       padding=1),
-                             nn.Conv1d(in_channels=8,
-                                       out_channels=16,
-                                       kernel_size=3,
-                                       padding=1),
-                             nn.Conv1d(in_channels=16,
-                                       out_channels=32,
-                                       kernel_size=3,
-                                       padding=1),
-                             nn.Conv1d(in_channels=32,
-                                       out_channels=64,
-                                       kernel_size=3,
-                                       padding=1),
-                             nn.Conv1d(in_channels=64,
-                                       out_channels=128,
-                                       kernel_size=3,
-                                       padding=1),
+                             WaveConvLayer(in_channels=(blend + 1) * self.channels,
+                                           out_channels=8),
+                             WaveConvLayer(in_channels=8),
+                             WaveConvLayer(in_channels=16),
+                             WaveConvLayer(in_channels=32),
+                             WaveConvLayer(in_channels=64)
                          )
 
         self.linear_wave = nn.Linear(in_features=128, out_features=(blend + 1) * self.channels)
@@ -91,9 +141,9 @@ class BlendNet(nn.Module):
         data = torch.stack((mag_stft, mag_wave), dim=1) # Dim = (n_batch, 2, n_channels, n_bins, n_frames)
         data = 10 * torch.log10(torch.clamp(data, min=1e-8)) # Dim = (n_batch, 2, n_channels, n_bins, n_frames)
         data = data.reshape(data.size(0), -1, data.size(-2), data.size(-1)) # Dim = (n_batch, 2 * n_channels, n_bins, n_frames)
-        data = self.conv_stft(data) # Dim = (n_batch, 32, bins_out, n_frames)
-        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 32 * bins_out, n_frames)
-        data = data.transpose(1, 2) # Dim = (n_batch, n_frames, 32 * bins_out)
+        data = self.conv_stft(data) # Dim = (n_batch, 128, bins_out, n_frames)
+        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 128 * bins_out, n_frames)
+        data = data.transpose(1, 2) # Dim = (n_batch, n_frames, 128 * bins_out)
         data = self.linear_stft(data) # Dim = (n_batch, n_frames, 2 * n_bins * n_channels)
         data = data.reshape(data.size(0), data.size(1), self.bins, self.channels, -1) # Dim = (n_batch, n_frames, n_bins, n_channels, 2)
         data = data.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
