@@ -12,6 +12,7 @@ class STFTConvLayer(nn.Module):
             in_channels -- Número de canales de entrada
             out_channels -- Número de canales de salida
         """
+        super(STFTConvLayer, self).__init__()
         self.features = features
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -48,6 +49,7 @@ class WaveConvLayer(nn.Module):
             in_channels -- Número de canales de entrada
             out_channels -- Número de canales de salida
         """
+        super(WaveConvLayer, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         if out_channels == -1:
