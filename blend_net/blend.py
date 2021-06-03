@@ -122,7 +122,7 @@ class BlendNet(nn.Module):
 
         self.linear_wave = nn.Linear(in_features=128, out_features=(blend + 1) * self.channels)
 
-        self.activation = nn.Tanh()
+        self.activation = nn.Sigmoid()
 
     def forward(self, wave_stft: torch.Tensor, wave: torch.Tensor) -> torch.Tensor:
         """
