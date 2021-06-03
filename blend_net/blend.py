@@ -78,12 +78,13 @@ class BlendNet(nn.Module):
     """
     Modelo de mezcla de modelos de espectrograma y wave
     """
-    def __init__(self, channels: int, nfft: int, hop: int) -> None:
+    def __init__(self, channels: int, nfft: int, hop: int, activation: str) -> None:
         """
         Argumentos:
             channels -- Número de canales de audio
             nfft -- Número de puntos para calcular la nfft
             hop -- Número de puntos de hop
+            activation -- Función de activación a utilizar
         """
         super(BlendNet, self).__init__()
         self.channels = channels
@@ -122,7 +123,12 @@ class BlendNet(nn.Module):
 
         self.linear_wave = nn.Linear(in_features=128, out_features=(blend + 1) * self.channels)
 
-        self.activation = nn.Sigmoid()
+        if activation == "sigmoid":
+            self.activation = nn.Sigmoid()
+        elif activation == "tanh":
+            self.activation = nn.Tanh()
+        else:
+            raise NotImplementedError
 
     def forward(self, wave_stft: torch.Tensor, wave: torch.Tensor) -> torch.Tensor:
         """

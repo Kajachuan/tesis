@@ -52,6 +52,7 @@ def valid(network, valid_loader, device, stft_model, wave_model):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--activation", type=str, choices=["sigmoid", "tanh"], help="Función de activación")
     parser.add_argument("--batch-size", type=int, default=10, help="Tamaño del batch")
     parser.add_argument("--channels", type=int, default=2, help="Número de canales de audio")
     parser.add_argument("--checkpoint", type=str, help="Directorio de los checkpoints")
@@ -93,7 +94,7 @@ def main():
     for param in wave_model.parameters():
         param.requires_grad = False
 
-    model_args = [stft_state["args"][0], stft_state["args"][-2], stft_state["args"][-1]]
+    model_args = [stft_state["args"][0], stft_state["args"][-2], stft_state["args"][-1], args.activation]
     network = BlendNet(*model_args).to(device)
 
     if args.dataset == "musdb":
