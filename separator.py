@@ -104,7 +104,7 @@ class BlendSeparator:
     def _create_wave(self, args: List[str]) -> None:
         return WaveModel(*args).to(self.device)
 
-    def _create_spectrogram(self, args: List[str]) -> None:
+    def _create_blend(self, args: List[str]) -> None:
         return BlendNet(*args).to(self.device)
 
     def separate(self, track: torch.Tensor) -> Dict[str, ndarray]:
