@@ -1,11 +1,11 @@
 import torch
 from torch.nn import Module
-from typing import Dict
+from typing import Dict, List
 from numpy import ndarray
 from spectrogram_model.model import SpectrogramModel
 from wave_model.model import WaveModel
 
-class SpectrogramSeparator:
+class Separator:
     def __init__(self, root: str, use_other: bool, use_vocals: bool, device: torch.device) -> None:
         """
         Argumentos:
@@ -27,28 +27,47 @@ class SpectrogramSeparator:
 
         self.models = {}
         for stem in self.stems:
-            self.load_model(stem)
+            print(f"Cargando modelo de {stem}")
+            state = torch.load(f"{self.root}/{stem}/best_checkpoint")
+            self.set_model(stem, state["args"])
+            self.models[stem].load_state_dict(state["state_dict"])
+            self.models[stem].eval()
 
     def separate(self, track: torch.Tensor) -> Dict[str, ndarray]:
-        result = {}
-        for stem in self.stems:
-            _, _, estim = self.models[stem](track.unsqueeze(0))
-            result[stem] = estim[0, ...].cpu().detach().numpy().T
-        track = track.cpu().detach().numpy().T
+        with torch.no_grad():
+            result = {}
+            for stem in self.stems:
+                estim = self.eval_model(stem, track)
+                result[stem] = estim.cpu().detach().numpy().T
+            track = track.cpu().detach().numpy().T
 
-        if not self.use_other:
-            result["other"] = track - (result["vocals"] + result["drums"] + result["bass"])
+            if not self.use_other:
+                result["other"] = track - (result["vocals"] + result["drums"] + result["bass"])
 
-        if self.use_vocals:
-            result["accompaniment"] = track - result["vocals"]
-        else:
-            result["accompaniment"] = result["drums"] + result["bass"] + result["other"]
+            if self.use_vocals:
+                result["accompaniment"] = track - result["vocals"]
+            else:
+                result["accompaniment"] = result["drums"] + result["bass"] + result["other"]
 
-        return result
+            return result
 
-    def load_model(self, stem: str) -> None:
-        print(f"Cargando modelo de {stem}")
-        state = torch.load(f"{self.root}/{stem}/best_checkpoint")
-        self.models[stem] = SpectrogramModel(*state["args"]).to(self.device)
-        self.models[stem].load_state_dict(state["state_dict"])
-        self.models[stem].eval()
+    def set_model(self, stem: str) -> None:
+        raise NotImplementedError
+
+    def eval_model(self, stem: str, track: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
+
+class SpectrogramSeparator(Separator):
+    def set_model(self, stem: str, args: List[str]) -> None:
+        self.models[stem] = SpectrogramModel(*args).to(self.device)
+
+    def eval_model(self, stem: str, track: torch.Tensor) -> torch.Tensor:
+        _, _, estim = self.models[stem](track.unsqueeze(0))
+        return estim[0, ...]
+
+class WaveSeparator(Separator):
+    def set_model(self, stem: str, args: List[str]) -> None:
+        self.models[stem] = WaveModel(*args).to(self.device)
+
+    def eval_model(self, stem: str, track: torch.Tensor) -> torch.Tensor:
+        return self.models[stem](track.unsqueeze(0))[0, ...]
