@@ -35,11 +35,19 @@ def main():
     parser.add_argument("--checkpoints", type=str, help="Ruta del modelo a evaluar")
     parser.add_argument("--end", type=int, default=49, choices=range(50), help="Índice de la canción de fin")
     parser.add_argument("--init", type=int, default=0, choices=range(50), help="Índice de la canción de inicio")
-    parser.add_argument("--model", type=str, choices=["spectrogram", "wave"], help="Modelo a utilizar")
     parser.add_argument("--other", action="store_true", help="Utilizar el modelo de other")
     parser.add_argument("--output", type=str, help="Ruta donde se guarda la evaluación")
     parser.add_argument("--root", type=str, help="Ruta del dataset")
     parser.add_argument("--vocals", action="store_true", help="Restar vocals para calcular el acompañamiento")
+
+    subparsers = parser.add_subparsers(help="Tipo de modelo", dest="model")
+    parser_spec = subparsers.add_parser("spectrogram", help="Modelo de espectrograma")
+
+    parser_wave = subparsers.add_parser("wave", help="Modelo de wave")
+
+    parser_blend = subparsers.add_parser("blend", help="Modelo de mezcla")
+    parser_blend.add_argument("--checkpoints-stft", type=str, help="Ruta del modelo de espectrograma")
+    parser_blend.add_argument("--checkpoints-wave", type=str, help="Ruta del modelo de wave")
     args = parser.parse_args()
 
     use_cuda = torch.cuda.is_available()
@@ -50,6 +58,9 @@ def main():
         separator = SpectrogramSeparator(args.checkpoints, args.other, args.vocals, device)
     elif args.model == "wave":
         separator = WaveSeparator(args.checkpoints, args.other, args.vocals, device)
+    elif args.model == "blend":
+        separator = BlendSeparator(args.checkpoints_stft, args.checkpoints_wave,
+                                   args.checkpoints, args.other, args.vocals, device)
     else:
         raise NotImplementedError
 

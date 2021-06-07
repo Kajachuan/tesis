@@ -4,6 +4,7 @@ from typing import Dict, List
 from numpy import ndarray
 from spectrogram_model.model import SpectrogramModel
 from wave_model.model import WaveModel
+from blend_net.blend import BlendNet
 
 class Separator:
     def __init__(self, root: str, use_other: bool, use_vocals: bool, device: torch.device) -> None:
@@ -71,3 +72,59 @@ class WaveSeparator(Separator):
 
     def eval_model(self, stem: str, track: torch.Tensor) -> torch.Tensor:
         return self.models[stem](track.unsqueeze(0))[0, ...]
+
+class BlendSeparator:
+    def __init__(self, stft_root: str, wave_root: str, root: str, use_other: bool,
+                 use_vocals: bool, device: torch.device) -> None:
+
+        self.use_other = use_other
+        self.use_vocals = use_vocals
+        self.device = device
+        types = {"stft": (stft_root, self._create_spectrogram),
+                 "wave": (wave_root, self._create_wave),
+                 "blend": (root, self._create_blend)}
+
+        self.stems = ["vocals", "drums", "bass"]
+        if self.use_other:
+            self.stems.append("other")
+
+        self.models = {}
+        for type in ["stft", "wave", "blend"]:
+            self.models[type] = {}
+            for stem in self.stems:
+                print(f"Cargando modelo de {stem} de {type}")
+                state = torch.load(f"{types[type][0]}/{stem}/best_checkpoint")
+                self.models[type][stem] = types[type][1](state["args"])
+                self.models[type][stem].load_state_dict(state["state_dict"])
+                self.models[type][stem].eval()
+
+    def _create_spectrogram(self, args: List[str]) -> None:
+        return SpectrogramModel(*args).to(self.device)
+
+    def _create_wave(self, args: List[str]) -> None:
+        return WaveModel(*args).to(self.device)
+
+    def _create_spectrogram(self, args: List[str]) -> None:
+        return BlendNet(*args).to(self.device)
+
+    def separate(self, track: torch.Tensor) -> Dict[str, ndarray]:
+        with torch.no_grad():
+            result = {}
+            track = track.unsqueeze(0)
+            for stem in self.stems:
+                _, _, wave_stft = self.models["stft"][stem](track)
+                wave = self.models["wave"][stem](track)
+                estim = self.models["blend"][stem](wave_stft, wave)[0, ...]
+                result[stem] = estim.cpu().detach().numpy().T
+
+            track = track[0, ...].cpu().detach().numpy().T
+
+            if not self.use_other:
+                result["other"] = track - (result["vocals"] + result["drums"] + result["bass"])
+
+            if self.use_vocals:
+                result["accompaniment"] = track - result["vocals"]
+            else:
+                result["accompaniment"] = result["drums"] + result["bass"] + result["other"]
+
+            return result
