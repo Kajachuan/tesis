@@ -7,7 +7,7 @@ import torch
 import tqdm
 from separator import *
 
-def merge_json(out_dir: str, track_name: str, partitions: int) -> None:
+def merge_jsons(out_dir: str, track_name: str, partitions: int) -> None:
     data = []
     for i in range(1, partitions + 1):
         f = open(f"{out_dir}{i}/test/{track_name}.json")
