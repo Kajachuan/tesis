@@ -6,7 +6,7 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
-from dataset.dataset import MUSDB18Dataset
+from dataset.dataset import *
 from spectrogram_model.model import SpectrogramModel
 from wave_model.model import WaveModel
 from blend_net.blend import BlendNet
