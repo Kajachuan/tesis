@@ -114,13 +114,13 @@ class MedleyDBDataset(Dataset):
         self.duration = duration * self.sample_rate
         self.samples = samples
         self.partitions = partitions
-        self.track_names = os.listdir(f'{base_path}/stems/{target}')
+        self.track_names = os.listdir(f'{base_path}/stems/{target}/{split}')
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
         if split == 'train':
             track_name = self.track_names[index // self.samples]
             _, mix = wavfile.read(f'{self.base_path}/mixes/{self.target}/{track_name}')
-            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{track_name}')
+            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{split}/{track_name}')
 
             start = random.uniform(0, mix.size(0) - self.duration)
             mix = mix[start:start + self.duration, :].T
@@ -134,12 +134,12 @@ class MedleyDBDataset(Dataset):
                 mix = np.flipud(mix)
                 source = np.flipud(source)
 
-            mix = torch.as_tensor(mix.copy(), dtype=torch.float32)
-            source = torch.as_tensor(source.copy(), dtype=torch.float32)
+            x = torch.as_tensor(mix, dtype=torch.float32)
+            y = torch.as_tensor(source, dtype=torch.float32)
         else:
             track_name = self.track_names[index // self.partitions]
             _, mix = wavfile.read(f'{self.base_path}/mixes/{self.target}/{track_name}')
-            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{track_name}')
+            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{split}/{track_name}')
 
             chunk = mix.size(0) // self.partitions
             chunk_start = (index % self.partitions) * chunk
@@ -151,9 +151,9 @@ class MedleyDBDataset(Dataset):
             mix = mix[chunk_start:chunk_start + chunk_duration, :].T
             source = source[chunk_start:chunk_start + chunk_duration, :].T
 
-            mix = torch.as_tensor(mix.copy(), dtype=torch.float32)
-            source = torch.as_tensor(source.copy(), dtype=torch.float32)
-        return mix, source
+            x = torch.as_tensor(mix, dtype=torch.float32)
+            y = torch.as_tensor(source, dtype=torch.float32)
+        return x, y
 
     def __len__(self) -> int:
         return len(self.track_names) * self.samples * self.partitions
