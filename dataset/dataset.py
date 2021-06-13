@@ -112,7 +112,7 @@ class MedleyDBDataset(Dataset):
         self.base_path = base_path
         self.split = split
         self.target = target
-        self.duration = duration * self.sample_rate if duration else None
+        self.duration = int(duration * self.sample_rate) if duration else None
         self.samples = samples
         self.partitions = partitions
         self.track_names = os.listdir(f'{base_path}/stems/{target}/{split}')
@@ -124,7 +124,6 @@ class MedleyDBDataset(Dataset):
             source, _ = torchaudio.load(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
 
             start = random.randrange(0, mix.size(1) - self.duration)
-            print(start, self.duration)
             mix = mix[:, start:start + self.duration]
             source = source[:, start:start + self.duration]
 
