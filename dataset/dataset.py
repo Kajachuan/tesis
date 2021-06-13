@@ -108,6 +108,7 @@ class MedleyDBDataset(Dataset):
         partitions -- Cantidad de particiones de las canciones de validación
         """
         super(MedleyDBDataset, self).__init__()
+        torchaudio.set_audio_backend("soundfile")
         self.sample_rate = 44100
         self.base_path = base_path
         self.split = split
