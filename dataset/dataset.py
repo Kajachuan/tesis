@@ -120,7 +120,7 @@ class MedleyDBDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
         if self.split == 'train':
             track_name = self.track_names[index // self.samples]
-            _, mix = wavfile.read(f'{self.base_path}/mixes/{self.target}/{track_name}')
+            _, mix = wavfile.read(f'{self.base_path}/mixes/{track_name}')
             _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{split}/{track_name}')
 
             start = random.uniform(0, mix.size(0) - self.duration)
@@ -139,7 +139,7 @@ class MedleyDBDataset(Dataset):
             y = torch.as_tensor(source, dtype=torch.float32)
         else:
             track_name = self.track_names[index // self.partitions]
-            _, mix = wavfile.read(f'{self.base_path}/mixes/{self.target}/{track_name}')
+            _, mix = wavfile.read(f'{self.base_path}/mixes/{track_name}')
             _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{split}/{track_name}')
 
             chunk = mix.size(0) // self.partitions
