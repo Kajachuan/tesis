@@ -115,7 +115,7 @@ def main():
         train_dataset = MedleyDBDataset(base_path=args.root, split="train", target=args.target,
                                         duration=args.duration, samples=args.samples)
         valid_dataset = MedleyDBDataset(base_path=args.root, split="valid", target=args.target,
-                                        duration=None, samples=args.samples, partitions=args.partitions)
+                                        duration=None, samples=1, partitions=args.partitions)
     else:
         raise NotImplementedError
 
