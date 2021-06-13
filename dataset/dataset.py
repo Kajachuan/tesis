@@ -130,7 +130,7 @@ class MedleyDBDataset(Dataset):
 
             min = 0.25
             max = 1.25
-            vol = (max - min) * torch.rand(mix.size(0), mix.size(1)) + min
+            vol = (max - min) * torch.rand(mix.size(0), 1) + min
 
             mix *= vol
             source *= vol
