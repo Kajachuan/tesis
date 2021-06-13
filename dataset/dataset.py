@@ -121,7 +121,7 @@ class MedleyDBDataset(Dataset):
         if self.split == 'train':
             track_name = self.track_names[index // self.samples]
             _, mix = wavfile.read(f'{self.base_path}/mixes/{track_name}')
-            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{split}/{track_name}')
+            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
 
             start = random.uniform(0, mix.size(0) - self.duration)
             mix = mix[start:start + self.duration, :].T
@@ -140,7 +140,7 @@ class MedleyDBDataset(Dataset):
         else:
             track_name = self.track_names[index // self.partitions]
             _, mix = wavfile.read(f'{self.base_path}/mixes/{track_name}')
-            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{split}/{track_name}')
+            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
 
             chunk = mix.size(0) // self.partitions
             chunk_start = (index % self.partitions) * chunk
