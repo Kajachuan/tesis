@@ -111,6 +111,7 @@ class MedleyDBDataset(Dataset):
         self.sample_rate = 44100
         self.base_path = base_path
         self.split = split
+        self.target = target
         self.duration = duration * self.sample_rate if duration else None
         self.samples = samples
         self.partitions = partitions
