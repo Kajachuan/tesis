@@ -61,9 +61,9 @@ def main():
     parser.add_argument("--dataset", type=str, default="musdb", choices=["musdb", "medleydb"], help="Nombre del dataset")
     parser.add_argument("--duration", type=float, default=5.0, help="Duración de cada canción")
     parser.add_argument("--epochs", type=int, default=10, help="Número de épocas")
-    parser.add_argument("--half", action="store_true", help="Partir canciones de validación por la mitad")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
     parser.add_argument("--output", type=str, help="Directorio de salida")
+    parser.add_argument("--partitions", type=int, default=1, help="Número de partes de las canciones de validación")
     parser.add_argument("--root", type=str, help="Ruta del dataset")
     parser.add_argument("--samples", type=int, default=1, help="Muestras por cancion")
     parser.add_argument("--target", type=str, default="vocals", help="Instrumento a separar")
@@ -110,9 +110,12 @@ def main():
         train_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="train", target=args.target,
                                        duration=args.duration, samples=args.samples, random=True)
         valid_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="valid", target=args.target,
-                                       duration=None, samples=1, random=False, half=args.half)
-    # elif args.dataset == "medleydb":
-    #     pass
+                                       duration=None, samples=1, random=False, partitions=args.partitions)
+    elif args.dataset == "medleydb":
+        train_dataset = MedleyDBDataset(base_path=args.root, split="train", target=args.target,
+                                        duration=args.duration, samples=args.samples)
+        valid_dataset = MedleyDBDataset(base_path=args.root, split="valid", target=args.target,
+                                        duration=None, samples=args.samples, partitions=args.partitions)
     else:
         raise NotImplementedError
 
