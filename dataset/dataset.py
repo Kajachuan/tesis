@@ -111,7 +111,7 @@ class MedleyDBDataset(Dataset):
         self.sample_rate = 44100
         self.base_path = base_path
         self.split = split
-        self.duration = duration * self.sample_rate
+        self.duration = duration * self.sample_rate if duration else None
         self.samples = samples
         self.partitions = partitions
         self.track_names = os.listdir(f'{base_path}/stems/{target}/{split}')
