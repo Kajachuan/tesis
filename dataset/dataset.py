@@ -124,6 +124,7 @@ class MedleyDBDataset(Dataset):
             source, _ = torchaudio.load(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
 
             start = random.randrange(0, mix.size(1) - self.duration)
+            print(start, self.duration)
             mix = mix[:, start:start + self.duration]
             source = source[:, start:start + self.duration]
 
