@@ -2,8 +2,8 @@ import musdb
 import os
 import random
 import torch
+import torchaudio
 import numpy as np
-from scipy.io import wavfile
 from torch.utils.data import Dataset
 from typing import Optional, Tuple
 
@@ -120,41 +120,38 @@ class MedleyDBDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
         if self.split == 'train':
             track_name = self.track_names[index // self.samples]
-            _, mix = wavfile.read(f'{self.base_path}/mixes/{track_name}')
-            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
+            mix, _ = torchaudio.load(f'{self.base_path}/mixes/{track_name}')
+            source, _ = torchaudio.load(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
 
-            start = random.uniform(0, mix.size(0) - self.duration)
-            mix = mix[start:start + self.duration, :].T
-            source = source[start:start + self.duration, :].T
+            start = random.uniform(0, mix.size(1) - self.duration)
+            mix = mix[:, start:start + self.duration]
+            source = source[:, start:start + self.duration]
 
-            vol = np.random.uniform(0.25, 1.25, (mix.size(0), 1))
+            min = 0.25
+            max = 1.25
+            vol = (max - min) * torch.rand(mix.size(0), mix.size(1)) + min
+
             mix *= vol
             source *= vol
 
             if random.random() < 0.5:
-                mix = np.flipud(mix)
-                source = np.flipud(source)
-
-            x = torch.as_tensor(mix, dtype=torch.float32)
-            y = torch.as_tensor(source, dtype=torch.float32)
+                mix = torch.flipud(mix)
+                source = torch.flipud(source)
         else:
             track_name = self.track_names[index // self.partitions]
-            _, mix = wavfile.read(f'{self.base_path}/mixes/{track_name}')
-            _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
+            mix, _ = torchaudio.load(f'{self.base_path}/mixes/{track_name}')
+            source, _ = torchaudio.load(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
 
-            chunk = mix.size(0) // self.partitions
+            chunk = mix.size(1) // self.partitions
             chunk_start = (index % self.partitions) * chunk
             if (index + 1) % self.partitions == 0:
-                chunk_duration = mix.size(0) - chunk_start
+                chunk_duration = mix.size(1) - chunk_start
             else:
                 chunk_duration = chunk
 
-            mix = mix[chunk_start:chunk_start + chunk_duration, :].T
-            source = source[chunk_start:chunk_start + chunk_duration, :].T
-
-            x = torch.as_tensor(mix, dtype=torch.float32)
-            y = torch.as_tensor(source, dtype=torch.float32)
-        return x, y
+            mix = mix[:, chunk_start:chunk_start + chunk_duration]
+            source = source[:, chunk_start:chunk_start + chunk_duration]
+        return mix, source
 
     def __len__(self) -> int:
         return len(self.track_names) * self.samples * self.partitions
