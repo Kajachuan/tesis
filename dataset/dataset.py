@@ -117,7 +117,7 @@ class MedleyDBDataset(Dataset):
         self.track_names = os.listdir(f'{base_path}/stems/{target}/{split}')
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        if split == 'train':
+        if self.split == 'train':
             track_name = self.track_names[index // self.samples]
             _, mix = wavfile.read(f'{self.base_path}/mixes/{self.target}/{track_name}')
             _, source = wavfile.read(f'{self.base_path}/stems/{self.target}/{split}/{track_name}')
