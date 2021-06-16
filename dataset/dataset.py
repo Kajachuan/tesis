@@ -1,6 +1,7 @@
 import musdb
 import os
 import random
+import yaml
 import torch
 import torchaudio
 import numpy as np
@@ -85,17 +86,16 @@ class MedleyDBDataset(Dataset):
     La estructura del directorio debe ser:
 
     - MedleyDB
-        - mixes
-            - (wav)
-            ...
         - stems
-            - drums
-                - (wav)
-                ...
-            - vocals
-                - (wav)
-                ...
-            ...
+            - track1
+                - stem1.wav
+                - stem2.wav
+                - ...
+            - ...
+        - mixes
+            - track1.wav
+            - track2.wav
+        - config.yaml
     """
     def __init__(self, base_path: str, split: str, target: str, duration: Optional[float],
                  samples: int = 1, partitions: int = 1) -> None:
@@ -116,7 +116,11 @@ class MedleyDBDataset(Dataset):
         self.duration = int(duration * self.sample_rate) if duration else None
         self.samples = samples
         self.partitions = partitions
-        self.track_names = os.listdir(f'{base_path}/stems/{target}/{split}')
+
+        with open(f'{base_path}/config.yaml') as f:
+            config = yaml.load(f)
+
+        self.track_names = config[target][split]
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
         if self.split == 'train':
