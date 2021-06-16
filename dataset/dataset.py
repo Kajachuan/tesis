@@ -108,7 +108,7 @@ class MedleyDBDataset(Dataset):
         partitions -- Cantidad de particiones de las canciones de validación
         """
         super(MedleyDBDataset, self).__init__()
-        torchaudio.set_audio_backend("soundfile")
+        torchaudio.set_audio_backend('soundfile')
         self.sample_rate = 44100
         self.base_path = base_path
         self.split = split
@@ -121,27 +121,44 @@ class MedleyDBDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
         if self.split == 'train':
             track_name = self.track_names[index // self.samples]
-            mix, _ = torchaudio.load(f'{self.base_path}/mixes/{track_name}')
-            source, _ = torchaudio.load(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
+            target_wav = f'{self.target}.wav'
+
+            min = 0.25
+            max = 1.25
+
+            mix, _ = torchaudio.load(f'{self.base_path}/stems/{track_name}/{target_wav}')
+            source = mix.detach().clone()
 
             start = random.randrange(0, mix.size(1) - self.duration)
             mix = mix[:, start:start + self.duration]
             source = source[:, start:start + self.duration]
 
-            min = 0.25
-            max = 1.25
             vol = (max - min) * torch.rand(mix.size(0), 1) + min
-
             mix *= vol
             source *= vol
 
             if random.random() < 0.5:
                 mix = torch.flipud(mix)
                 source = torch.flipud(source)
+
+            for wav in os.listdir(f'{self.base_path}/stems/{track_name}'):
+                if wav == target_wav:
+                    continue
+
+                current, _ = torchaudio.load(f'{self.base_path}/stems/{track_name}/{wav}')
+                start = random.randrange(0, current.size(1) - self.duration)
+                current = current[:, start:start + self.duration]
+
+                vol = (max - min) * torch.rand(mix.size(0), 1) + min
+                current *= vol
+
+                if random.random() < 0.5:
+                    current = torch.flipud(current)
+                mix += current
         else:
             track_name = self.track_names[index // self.partitions]
-            mix, _ = torchaudio.load(f'{self.base_path}/mixes/{track_name}')
-            source, _ = torchaudio.load(f'{self.base_path}/stems/{self.target}/{self.split}/{track_name}')
+            mix, _ = torchaudio.load(f'{self.base_path}/mixes/{track_name}.wav')
+            source, _ = torchaudio.load(f'{self.base_path}/stems/{track_name}/{self.target}.wav')
 
             chunk = mix.size(1) // self.partitions
             chunk_start = (index % self.partitions) * chunk
