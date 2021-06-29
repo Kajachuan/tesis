@@ -103,7 +103,7 @@ class BlendNet(nn.Module):
                                          [STFTConvLayer(features=(self.bins - (2**i - 2)) // 2**(i-1), in_channels=2**(i+1))
                                           for i in range(2, self.layers + 1)]))
 
-        self.linear_stft = nn.Linear(in_features=(self.bins - 2**(self.layers+1) - 2) // 2**(self.layers) * 2**(self.layers+2),
+        self.linear_stft = nn.Linear(in_features=(self.bins - (2**(self.layers+1) - 2)) // 2**(self.layers) * 2**(self.layers+2),
                                      out_features=blend * self.bins * self.channels)
 
         self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * self.channels, out_channels=8)] +
