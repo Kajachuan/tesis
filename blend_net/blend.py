@@ -24,6 +24,7 @@ class STFTConvLayer(nn.Module):
                               padding=(0,1))
         self.pool = nn.MaxPool2d(kernel_size=(2, 1))
         self.batch_norm = nn.BatchNorm1d((self.features - 2) // 2)
+        self.relu = nn.LeakyReLU()
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
@@ -40,6 +41,7 @@ class STFTConvLayer(nn.Module):
         data = self.batch_norm(data) # Dim = (n_batch, (features - 2) / 2, out_channels * n_frames)
         data = data.reshape(data.size(0), data.size(1), self.out_channels, -1) # Dim = (n_batch, (features - 2) / 2, out_channels, n_frames)
         data = data.transpose(1, 2) # Dim = (n_batch, out_channels, (features - 2) / 2, n_frames)
+        data = self.relu(data) # Dim = (n_batch, out_channels, (features - 2) / 2, n_frames)
         return data
 
 class WaveConvLayer(nn.Module):
@@ -78,15 +80,17 @@ class BlendNet(nn.Module):
     """
     Modelo de mezcla de modelos de espectrograma y wave
     """
-    def __init__(self, channels: int, nfft: int, hop: int, activation: str) -> None:
+    def __init__(self, layers: int, channels: int, nfft: int, hop: int, activation: str) -> None:
         """
         Argumentos:
+            layers -- Número de capas
             channels -- Número de canales de audio
             nfft -- Número de puntos para calcular la nfft
             hop -- Número de puntos de hop
             activation -- Función de activación a utilizar
         """
         super(BlendNet, self).__init__()
+        self.layers = layers
         self.channels = channels
         self.nfft = nfft
         self.bins = self.nfft // 2 + 1
@@ -95,33 +99,17 @@ class BlendNet(nn.Module):
 
         self.stft = STFT(self.nfft, self.hop)
 
-        self.conv_stft = nn.Sequential(
-                             STFTConvLayer(features=self.bins,
-                                           in_channels=blend * self.channels,
-                                           out_channels=8),
-                             STFTConvLayer(features=(self.bins - 2) // 2,
-                                           in_channels=8),
-                             STFTConvLayer(features=(self.bins - 6) // 4,
-                                           in_channels=16),
-                             STFTConvLayer(features=(self.bins - 14) // 8,
-                                           in_channels=32),
-                             STFTConvLayer(features=(self.bins - 30) // 16,
-                                           in_channels=64)
-                         ) # h_out = (h_in - 62) // 32, w_out = w_in, out_channels = 128
+        self.conv_stft = nn.Sequential(*([STFTConvLayer(features=self.bins, in_channels=blend * self.channels, out_channels=8)] +
+                                         [STFTConvLayer(features=(self.bins - (2**i - 2)) // 2**(i-1), in_channels=2**(i+1))
+                                          for i in range(2, self.layers + 1)]))
 
-        self.linear_stft = nn.Linear(in_features=(self.bins - 62) // 32 * 128,
+        self.linear_stft = nn.Linear(in_features=(self.bins - 2**(self.layers+1) - 2) // 2**(self.layers) * 2**(self.layers+2),
                                      out_features=blend * self.bins * self.channels)
 
-        self.conv_wave = nn.Sequential(
-                             WaveConvLayer(in_channels=(blend + 1) * self.channels,
-                                           out_channels=8),
-                             WaveConvLayer(in_channels=8),
-                             WaveConvLayer(in_channels=16),
-                             WaveConvLayer(in_channels=32),
-                             WaveConvLayer(in_channels=64)
-                         )
+        self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * self.channels, out_channels=8)] +
+                                         [WaveConvLayer(in_channels=2**(i+1)) for i in range(2, self.layers + 1)]))
 
-        self.linear_wave = nn.Linear(in_features=128, out_features=(blend + 1) * self.channels)
+        self.linear_wave = nn.Linear(in_features=2**(self.layers + 2), out_features=(blend + 1) * self.channels)
 
         if activation == "sigmoid":
             self.activation = nn.Sigmoid()

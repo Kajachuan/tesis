@@ -59,6 +59,7 @@ def main():
     parser.add_argument("--dataset", type=str, default="musdb", choices=["musdb", "medleydb"], help="Nombre del dataset")
     parser.add_argument("--duration", type=float, default=5.0, help="Duración de cada canción")
     parser.add_argument("--epochs", type=int, default=10, help="Número de épocas")
+    parser.add_argument("--layers", type=int, default=5, help="Número de capas")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
     parser.add_argument("--output", type=str, help="Directorio de salida")
     parser.add_argument("--partitions", type=int, default=1, help="Número de partes de las canciones de validación")
@@ -94,7 +95,7 @@ def main():
     for param in wave_model.parameters():
         param.requires_grad = False
 
-    model_args = [stft_state["args"][0], stft_state["args"][-2], stft_state["args"][-1], args.activation]
+    model_args = [args.layers, stft_state["args"][0], stft_state["args"][-2], stft_state["args"][-1], args.activation]
     network = BlendNet(*model_args).to(device)
 
     if args.dataset == "musdb":
