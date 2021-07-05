@@ -97,7 +97,7 @@ class BlendNet(nn.Module):
         self.bins = nfft // 2 + 1
         self.wave = wave
         blend = 2
-        hidden = 64
+        hidden = 4
 
         self.stft = STFT(nfft, hop)
 
@@ -168,8 +168,8 @@ class BlendNet(nn.Module):
             data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 3 * n_channels)
             data = self.wave_branch(data)[0] # Dim = (n_batch, timesteps, 128)
         elif self.wave == "cnn":
-            data = self.wave_branch(data) # Dim = (n_batch, 128, timesteps)
-            data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 128)
+            data = self.wave_branch(data) # Dim = (n_batch, 2 * hidden, timesteps)
+            data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 2 * hidden)
         data = self.linear_wave(data) # Dim = (n_batch, timesteps, n_channels * 3)
         data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
         data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps, 3)
