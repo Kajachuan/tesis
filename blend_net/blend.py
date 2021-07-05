@@ -162,8 +162,8 @@ class BlendNet(nn.Module):
         # blend_stft = self.stft(estim_stft, inverse=True)
 
         # Mezcla con Wave
-        data = torch.stack([wave_stft, wave], dim=1) # Dim = (n_batch, 3, n_channels, timesteps)
-        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 3 * n_channels, timesteps)
+        input = torch.stack([wave_stft, wave], dim=1) # Dim = (n_batch, 3, n_channels, timesteps)
+        data = input.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 3 * n_channels, timesteps)
         if self.wave == "rnn":
             data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 3 * n_channels)
             self.wave_branch.flatten_parameters()
@@ -175,5 +175,6 @@ class BlendNet(nn.Module):
         data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
         data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps, 3)
         data = self.activation(data) # Dim = (n_batch, timesteps, n_channels, 3)
-        data = data[..., 0] * wave_stft + data[..., 1] * wave
+        data *= input
+        data = data.sum(-1)
         return data
