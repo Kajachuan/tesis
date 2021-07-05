@@ -59,7 +59,8 @@ def main():
     parser.add_argument("--dataset", type=str, default="musdb", choices=["musdb", "medleydb"], help="Nombre del dataset")
     parser.add_argument("--duration", type=float, default=5.0, help="Duración de cada canción")
     parser.add_argument("--epochs", type=int, default=10, help="Número de épocas")
-    parser.add_argument("--layers", type=int, default=5, help="Número de capas")
+    parser.add_argument("--layers-spec", type=int, default=5, help="Número de capas de la rama spec")
+    parser.add_argument("--layers-wave", type=int, default=5, help="Número de capas de la rama wave")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
     parser.add_argument("--output", type=str, help="Directorio de salida")
     parser.add_argument("--partitions", type=int, default=1, help="Número de partes de las canciones de validación")
@@ -68,6 +69,7 @@ def main():
     parser.add_argument("--root", type=str, help="Ruta del dataset")
     parser.add_argument("--samples", type=int, default=1, help="Muestras por cancion")
     parser.add_argument("--target", type=str, default="vocals", help="Instrumento a separar")
+    parser.add_argument("--wave-type", type=str, choices=["cnn", "rnn"], help="Tipo de red de la rama wave")
     parser.add_argument("--weight-decay", type=float, default=0, help="Decaimiento de los pesos de Adam")
     parser.add_argument("--workers", type=int, default=0, help="Número de workers para cargar los datos")
 
@@ -95,7 +97,8 @@ def main():
     for param in wave_model.parameters():
         param.requires_grad = False
 
-    model_args = [args.layers, stft_state["args"][0], stft_state["args"][-2], stft_state["args"][-1], args.activation]
+    model_args = [args.spec_layers, args.wave_layers, stft_state["args"][0], stft_state["args"][-2],
+                  stft_state["args"][-1], args.activation, args.wave_type]
     network = BlendNet(*model_args).to(device)
 
     if args.dataset == "musdb":

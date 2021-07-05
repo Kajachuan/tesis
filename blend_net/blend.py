@@ -80,36 +80,46 @@ class BlendNet(nn.Module):
     """
     Modelo de mezcla de modelos de espectrograma y wave
     """
-    def __init__(self, layers: int, channels: int, nfft: int, hop: int, activation: str) -> None:
+    def __init__(self, spec_layers: int, wave_layers: int, channels: int,
+                 nfft: int, hop: int, activation: str, wave: str) -> None:
         """
         Argumentos:
-            layers -- Número de capas
+            spec_layers -- Número de capas de la rama spec
+            wave_layers -- Número de capas de la rama wave
             channels -- Número de canales de audio
             nfft -- Número de puntos para calcular la nfft
             hop -- Número de puntos de hop
             activation -- Función de activación a utilizar
+            wave -- Tipo de red a utilizar (rnn o cnn)
         """
         super(BlendNet, self).__init__()
-        self.layers = layers
         self.channels = channels
-        self.nfft = nfft
-        self.bins = self.nfft // 2 + 1
-        self.hop = hop
+        self.bins = nfft // 2 + 1
+        self.wave = wave
         blend = 2
+        hidden = 64
 
-        self.stft = STFT(self.nfft, self.hop)
+        self.stft = STFT(nfft, hop)
 
-        self.conv_stft = nn.Sequential(*([STFTConvLayer(features=self.bins, in_channels=blend * self.channels, out_channels=8)] +
+        self.stft_branch = nn.Sequential(*([STFTConvLayer(features=self.bins, in_channels=blend * self.channels, out_channels=8)] +
                                          [STFTConvLayer(features=(self.bins - (2**i - 2)) // 2**(i-1), in_channels=2**(i+1))
-                                          for i in range(2, self.layers + 1)]))
+                                          for i in range(2, spec_layers + 1)]))
 
-        self.linear_stft = nn.Linear(in_features=(self.bins - (2**(self.layers+1) - 2)) // 2**(self.layers) * 2**(self.layers+2),
+        self.linear_stft = nn.Linear(in_features=(self.bins - (2**(spec_layers+1) - 2)) // 2**(spec_layers) * 2**(spec_layers+2),
                                      out_features=blend * self.bins * self.channels)
 
-        self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * self.channels, out_channels=8)] +
-                                         [WaveConvLayer(in_channels=2**(i+1)) for i in range(2, self.layers + 1)]))
+        if wave == "cnn":
+            self.wave_branch = nn.Sequential(*([WaveConvLayer(in_channels=(blend + 1) * self.channels, out_channels=8)] +
+                                             [WaveConvLayer(in_channels=2**(i+1)) for i in range(2, wave_layers + 1)]))
 
-        self.linear_wave = nn.Linear(in_features=2**(self.layers + 2), out_features=(blend + 1) * self.channels)
+            self.linear_wave = nn.Linear(in_features=2**(wave_layers + 2), out_features=(blend + 1) * self.channels)
+        elif wave == "rnn":
+            self.wave_branch = nn.GRU(input_size=(blend + 1) * self.channels, hidden_size=hidden, num_layers=wave_layers,
+                                      batch_first=True, dropout=0.3, bidirectional=True)
+
+            self.linear_wave = nn.Linear(in_features=2 * hidden, out_features=(blend + 1) * self.channels)
+        else:
+            raise NotImplementedError
 
         if activation == "sigmoid":
             self.activation = nn.Sigmoid()
@@ -137,7 +147,7 @@ class BlendNet(nn.Module):
         data = torch.stack((mag_stft, mag_wave), dim=1) # Dim = (n_batch, 2, n_channels, n_bins, n_frames)
         data = 10 * torch.log10(torch.clamp(data, min=1e-8)) # Dim = (n_batch, 2, n_channels, n_bins, n_frames)
         data = data.reshape(data.size(0), -1, data.size(-2), data.size(-1)) # Dim = (n_batch, 2 * n_channels, n_bins, n_frames)
-        data = self.conv_stft(data) # Dim = (n_batch, 128, bins_out, n_frames)
+        data = self.stft_branch(data) # Dim = (n_batch, 128, bins_out, n_frames)
         data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 128 * bins_out, n_frames)
         data = data.transpose(1, 2) # Dim = (n_batch, n_frames, 128 * bins_out)
         data = self.linear_stft(data) # Dim = (n_batch, n_frames, 2 * n_bins * n_channels)
@@ -154,7 +164,9 @@ class BlendNet(nn.Module):
         # Mezcla con Wave
         data = torch.stack([wave_stft, wave, blend_stft], dim=1) # Dim = (n_batch, 3, n_channels, timesteps)
         data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 3 * n_channels, timesteps)
-        data = self.conv_wave(data) # Dim = (n_batch, 128, timesteps)
+        data = self.wave_branch(data) # Dim = (n_batch, 128, timesteps)
+        if self.wave == "rnn":
+            data = data[0]
         data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 128)
         data = self.linear_wave(data) # Dim = (n_batch, timesteps, n_channels * 3)
         data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
