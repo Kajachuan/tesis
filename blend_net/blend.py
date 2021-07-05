@@ -164,10 +164,12 @@ class BlendNet(nn.Module):
         # Mezcla con Wave
         data = torch.stack([wave_stft, wave, blend_stft], dim=1) # Dim = (n_batch, 3, n_channels, timesteps)
         data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 3 * n_channels, timesteps)
-        data = self.wave_branch(data) # Dim = (n_batch, 128, timesteps)
         if self.wave == "rnn":
-            data = data[0]
-        data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 128)
+            data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 3 * n_channels)
+            data = self.wave_branch(data)[0] # Dim = (n_batch, timesteps, 128)
+        elif self.wave == "cnn":
+            data = self.wave_branch(data) # Dim = (n_batch, 128, timesteps)
+            data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 128)
         data = self.linear_wave(data) # Dim = (n_batch, timesteps, n_channels * 3)
         data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
         data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps, 3)
