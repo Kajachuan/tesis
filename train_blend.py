@@ -97,7 +97,7 @@ def main():
     for param in wave_model.parameters():
         param.requires_grad = False
 
-    model_args = [args.spec_layers, args.wave_layers, stft_state["args"][0], stft_state["args"][-2],
+    model_args = [args.layers_spec, args.layers_wave, stft_state["args"][0], stft_state["args"][-2],
                   stft_state["args"][-1], args.activation, args.wave_type]
     network = BlendNet(*model_args).to(device)
 
