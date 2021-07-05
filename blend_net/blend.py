@@ -175,6 +175,7 @@ class BlendNet(nn.Module):
         data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
         data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps, 3)
         data = self.activation(data) # Dim = (n_batch, timesteps, n_channels, 3)
+        data = data.transpose(1, 3) # Dim = (n_batch, 3, n_channels, timesteps)
         data *= input
         data = data.sum(-1)
         return data
