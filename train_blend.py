@@ -20,11 +20,11 @@ def train(network, train_loader, device, stft_model, wave_model, optimizer):
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad()
 
-        with torch.no_grad():
-            _, _, wave_stft = stft_model(x)
-            wave = wave_model(x)
+        # with torch.no_grad():
+        #     _, _, wave_stft = stft_model(x)
+        #     wave = wave_model(x)
 
-        y_hat = network(wave_stft, wave)
+        y_hat = network(x, x) # CAMBIAR DESPUÉS
         loss = mse_loss(y_hat, y)
         loss.backward()
         optimizer.step()
@@ -41,9 +41,9 @@ def valid(network, valid_loader, device, stft_model, wave_model):
             pbar.set_description("Validando")
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
 
-            _, _, wave_stft = stft_model(x)
-            wave = wave_model(x)
-            y_hat = network(wave_stft, wave)
+            # _, _, wave_stft = stft_model(x)
+            # wave = wave_model(x)
+            y_hat = network(x, x) # CAMBIAR DESPUÉS
 
             loss = mse_loss(y_hat, y)
             batch_loss += loss.item() * y.size(0)
