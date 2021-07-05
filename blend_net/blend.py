@@ -109,10 +109,10 @@ class BlendNet(nn.Module):
         #                              out_features=blend * self.bins * self.channels)
 
         if wave == "cnn":
-            self.wave_branch = nn.Sequential(*([WaveConvLayer(in_channels=(blend + 1) * self.channels, out_channels=8)] +
+            self.wave_branch = nn.Sequential(*([WaveConvLayer(in_channels=(blend) * self.channels, out_channels=8)] +
                                              [WaveConvLayer(in_channels=2**(i+1)) for i in range(2, wave_layers + 1)]))
 
-            self.linear_wave = nn.Linear(in_features=2**(wave_layers + 2), out_features=(blend + 1) * self.channels)
+            self.linear_wave = nn.Linear(in_features=2**(wave_layers + 2), out_features=(blend) * self.channels)
         elif wave == "rnn":
             self.wave_branch = nn.GRU(input_size=blend * self.channels, hidden_size=hidden, num_layers=wave_layers,
                                       batch_first=True, dropout=0.3)
