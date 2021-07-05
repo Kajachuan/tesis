@@ -115,9 +115,9 @@ class BlendNet(nn.Module):
             self.linear_wave = nn.Linear(in_features=2**(wave_layers + 2), out_features=(blend + 1) * self.channels)
         elif wave == "rnn":
             self.wave_branch = nn.GRU(input_size=(blend + 1) * self.channels, hidden_size=hidden, num_layers=wave_layers,
-                                      batch_first=True, dropout=0.3, bidirectional=True)
+                                      batch_first=True, dropout=0.3)
 
-            self.linear_wave = nn.Linear(in_features=2 * hidden, out_features=(blend + 1) * self.channels)
+            self.linear_wave = nn.Linear(in_features=hidden, out_features=(blend + 1) * self.channels)
         else:
             raise NotImplementedError
 
