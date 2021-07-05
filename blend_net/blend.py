@@ -166,6 +166,7 @@ class BlendNet(nn.Module):
         data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 3 * n_channels, timesteps)
         if self.wave == "rnn":
             data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 3 * n_channels)
+            self.wave_branch.flatten_parameters()
             data = self.wave_branch(data)[0] # Dim = (n_batch, timesteps, 128)
         elif self.wave == "cnn":
             data = self.wave_branch(data) # Dim = (n_batch, 2 * hidden, timesteps)
