@@ -23,10 +23,10 @@ class BlendNet(nn.Module):
         # Dim = (n_batch, n_channels, timesteps)
         # data = data.reshape(data.size(0), data.size(1), -1) # Dim: (n_batch, n_frames, n_bins * n_channels)
         self.blstm.flatten_parameters()
-        data = self.blstm(input.view(input.size(0), input.size(-1), -1))[0] # Dim: (n_batch, timesteps, hidden)
+        data = self.blstm(input.transpose(1,2))[0] # Dim: (n_batch, timesteps, hidden)
         data = self.linear(data) # Dim: (n_batch, timesteps, n_channels)
         # data = data.reshape(data.size(0), data.size(1), self.bins, self.channels) # Dim: (n_batch, n_frames, n_bins, n_channels)
-        data = data.view(data.size(0), data.size(-1), -1) # Dim: (n_batch, n_channels, timesteps)
+        data = data.transpose(1, 2) # Dim: (n_batch, n_channels, timesteps)
         mask = self.activation(data)
 
         # estim = mag * mask
