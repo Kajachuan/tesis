@@ -16,7 +16,7 @@ class BlendNet(nn.Module):
         self.linear = nn.Linear(8, channels)
         self.activation = nn.Sigmoid()
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
         stft = self.stft(data)
         mag, phase = stft[..., 0], stft[..., 1]
         # mag_db = 10 * torch.log10(torch.clamp(mag, min=1e-8)) # Dim: (n_batch, n_channels, n_bins, n_frames)
