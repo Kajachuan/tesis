@@ -24,7 +24,7 @@ def train(network, train_loader, device, stft_model, wave_model, optimizer):
         #     _, _, wave_stft = stft_model(x)
         #     wave = wave_model(x)
 
-        y_hat = network(x, x) # CAMBIAR DESPUÉS
+        y_hat = network(x) # CAMBIAR DESPUÉS
         loss = mse_loss(y_hat, y)
         loss.backward()
         optimizer.step()
@@ -43,7 +43,7 @@ def valid(network, valid_loader, device, stft_model, wave_model):
 
             # _, _, wave_stft = stft_model(x)
             # wave = wave_model(x)
-            y_hat = network(x, x) # CAMBIAR DESPUÉS
+            y_hat = network(x) # CAMBIAR DESPUÉS
 
             loss = mse_loss(y_hat, y)
             batch_loss += loss.item() * y.size(0)
@@ -59,9 +59,11 @@ def main():
     parser.add_argument("--dataset", type=str, default="musdb", choices=["musdb", "medleydb"], help="Nombre del dataset")
     parser.add_argument("--duration", type=float, default=5.0, help="Duración de cada canción")
     parser.add_argument("--epochs", type=int, default=10, help="Número de épocas")
+    parser.add_argument("--hop", type=int, default=1024, help="Tamaño del hop de la STFT")
     parser.add_argument("--layers-spec", type=int, default=5, help="Número de capas de la rama spec")
     parser.add_argument("--layers-wave", type=int, default=5, help="Número de capas de la rama wave")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
+    parser.add_argument("--nfft", type=int, default=4096, help="Tamaño de la FFT de la STFT")
     parser.add_argument("--output", type=str, help="Directorio de salida")
     parser.add_argument("--partitions", type=int, default=1, help="Número de partes de las canciones de validación")
     parser.add_argument("--path-stft", type=str, help="Ruta del modelo de STFT")
@@ -81,8 +83,8 @@ def main():
     print("GPU disponible:", use_cuda)
     device = torch.device("cuda:0" if use_cuda else "cpu")
 
-    print("Cargando modelo de STFT")
-    stft_state = torch.load(f"{args.path_stft}/{args.target}/best_checkpoint", map_location=device)
+    # print("Cargando modelo de STFT")
+    # stft_state = torch.load(f"{args.path_stft}/{args.target}/best_checkpoint", map_location=device)
     # stft_model = SpectrogramModel(*stft_state["args"]).to(device)
     # stft_model.load_state_dict(stft_state["state_dict"])
     # stft_model.eval()
@@ -99,8 +101,7 @@ def main():
     #     param.requires_grad = False
     wave_model = None
 
-    model_args = [args.layers_spec, args.layers_wave, stft_state["args"][0], stft_state["args"][-2],
-                  stft_state["args"][-1], args.activation, args.wave_type]
+    model_args = [args.layers_spec, args.layers_wave, args.channels, args.nfft, args.hop, args.activation, args.wave_type]
     network = BlendNet(*model_args).to(device)
 
     if args.dataset == "musdb":

@@ -114,10 +114,10 @@ class BlendNet(nn.Module):
 
             self.linear_wave = nn.Linear(in_features=2**(wave_layers + 2), out_features=(blend) * self.channels)
         elif wave == "rnn":
-            self.wave_branch = nn.GRU(input_size=blend * self.channels, hidden_size=hidden, num_layers=wave_layers,
+            self.wave_branch = nn.GRU(input_size=self.channels, hidden_size=hidden, num_layers=wave_layers,
                                       batch_first=True, dropout=0.3)
 
-            self.linear_wave = nn.Linear(in_features=hidden, out_features=blend * self.channels)
+            self.linear_wave = nn.Linear(in_features=hidden, out_features=self.channels)
         else:
             raise NotImplementedError
 
@@ -128,7 +128,7 @@ class BlendNet(nn.Module):
         else:
             raise NotImplementedError
 
-    def forward(self, wave_stft: torch.Tensor, wave: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
         Argumentos:
             wave_stft -- Audio del modelo de STFT de dimensión (n_batch, n_channels, timesteps)
@@ -162,19 +162,18 @@ class BlendNet(nn.Module):
         # blend_stft = self.stft(estim_stft, inverse=True)
 
         # Mezcla con Wave
-        input = torch.stack([wave_stft, wave], dim=1) # Dim = (n_batch, 3, n_channels, timesteps)
-        data = input.reshape(input.size(0), -1, input.size(-1)) # Dim = (n_batch, 3 * n_channels, timesteps)
+        # data = input.reshape(input.size(0), -1, input.size(-1)) # Dim = (n_batch, 3 * n_channels, timesteps)
+        data = input # Dim = (n_batch, n_channels, timesteps)
         if self.wave == "rnn":
-            data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 3 * n_channels)
+            data = data.transpose(1, 2) # Dim = (n_batch, timesteps, n_channels)
             self.wave_branch.flatten_parameters()
-            data = self.wave_branch(data)[0] # Dim = (n_batch, timesteps, 128)
+            data = self.wave_branch(data)[0] # Dim = (n_batch, timesteps, hidden)
         elif self.wave == "cnn":
-            data = self.wave_branch(data) # Dim = (n_batch, 2 * hidden, timesteps)
-            data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 2 * hidden)
-        data = self.linear_wave(data) # Dim = (n_batch, timesteps, n_channels * 3)
-        data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
-        data = data.transpose(1, 3) # Dim = (n_batch, 3, n_channels, timesteps)
-        data = self.activation(data) # Dim = (n_batch, 3, n_channels, timesteps)
+            data = self.wave_branch(data) # Dim = (n_batch, 128, timesteps)
+            data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 128)
+        data = self.linear_wave(data) # Dim = (n_batch, timesteps, n_channels)
+        # data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
+        data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps)
+        data = self.activation(data) # Dim = (n_batch, n_channels, timesteps)
         res = data * input
-        res = res.sum(1)
         return res
