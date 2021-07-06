@@ -11,9 +11,9 @@ class BlendNet(nn.Module):
         self.hop = hop
         self.channels = channels
         self.stft = STFT(nfft, hop)
-        self.blstm = nn.LSTM(bins * channels, 64, 2, batch_first=True,
+        self.blstm = nn.LSTM(self.bins * channels, 64, 2, batch_first=True,
                              dropout=0.3, bidirectional=True)
-        self.linear = nn.Linear(128, bins * channels)
+        self.linear = nn.Linear(128, self.bins * channels)
         self.activation = nn.Sigmoid()
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
