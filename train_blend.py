@@ -101,7 +101,8 @@ def main():
     #     param.requires_grad = False
     wave_model = None
 
-    model_args = [args.layers_spec, args.layers_wave, args.channels, args.nfft, args.hop, args.activation, args.wave_type]
+    # model_args = [args.layers_spec, args.layers_wave, args.channels, args.nfft, args.hop, args.activation, args.wave_type]
+    model_args = [args.channels, args.nfft, args.hop]
     network = BlendNet(*model_args).to(device)
 
     if args.dataset == "musdb":
