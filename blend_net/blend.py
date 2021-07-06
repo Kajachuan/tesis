@@ -21,20 +21,16 @@ class BlendNet(nn.Module):
         # mag, phase = stft[..., 0], stft[..., 1]
         # mag_db = 10 * torch.log10(torch.clamp(mag, min=1e-8)) # Dim: (n_batch, n_channels, n_bins, n_frames)
         # Dim = (n_batch, n_channels, timesteps)
-        mag = input * 2
-        mag_db = 10 * torch.log10(torch.clamp(mag, min=1e-8))
-        data = mag_db.transpose(1, 2) # Dim: (n_batch, timesteps, n_channels)
         # data = data.reshape(data.size(0), data.size(1), -1) # Dim: (n_batch, n_frames, n_bins * n_channels)
         self.blstm.flatten_parameters()
-        data = self.blstm(data)[0] # Dim: (n_batch, timesteps, hidden)
+        data = self.blstm(input.view(input.size(0), input.size(-1), -1))[0] # Dim: (n_batch, timesteps, hidden)
         data = self.linear(data) # Dim: (n_batch, timesteps, n_channels)
         # data = data.reshape(data.size(0), data.size(1), self.bins, self.channels) # Dim: (n_batch, n_frames, n_bins, n_channels)
-        data = data.transpose(1, 2) # Dim: (n_batch, n_channels, timesteps)
+        data = data.view(data.size(0), data.size(-1), -1) # Dim: (n_batch, n_channels, timesteps)
         mask = self.activation(data)
-        estim = mag * mask
 
         # estim = mag * mask
         # estim_stft = torch.stack((estim_mag * torch.cos(phase),
         #                           estim_mag * torch.sin(phase)), dim=-1)
         # estimates = self.stft(estim_stft, inverse=True)
-        return estim
+        return mask
