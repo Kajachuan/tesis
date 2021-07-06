@@ -27,7 +27,7 @@ class BlendNet(nn.Module):
         # data = data.reshape(data.size(0), data.size(1), -1) # Dim: (n_batch, n_frames, n_bins * n_channels)
         data = estimates.transpose(1,2)
         self.blstm.flatten_parameters()
-        data = self.blstm()[0] # Dim: (n_batch, timesteps, hidden)
+        data = self.blstm(data)[0] # Dim: (n_batch, timesteps, hidden)
         data = self.linear(data) # Dim: (n_batch, timesteps, n_channels)
         # data = data.reshape(data.size(0), data.size(1), self.bins, self.channels) # Dim: (n_batch, n_frames, n_bins, n_channels)
         data = data.transpose(1, 2) # Dim: (n_batch, n_channels, timesteps)
