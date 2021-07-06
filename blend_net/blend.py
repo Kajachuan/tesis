@@ -27,7 +27,7 @@ class BlendNet(nn.Module):
         data = self.linear(data) # Dim: (n_batch, n_frames, n_bins * n_channels)
         data = data.reshape(data.size(0), data.size(1), self.bins, self.channels) # Dim: (n_batch, n_frames, n_bins, n_channels)
         data = data.transpose(1, 3) # Dim: (n_batch, n_channels, n_bins, n_frames)
-        data = self.activation(data)
+        mask = self.activation(data)
 
         estim_mag = mag * mask
         estim_stft = torch.stack((estim_mag * torch.cos(phase),
