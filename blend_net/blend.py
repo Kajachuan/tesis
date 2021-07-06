@@ -21,7 +21,7 @@ class BlendNet(nn.Module):
         # mag, phase = stft[..., 0], stft[..., 1]
         # mag_db = 10 * torch.log10(torch.clamp(mag, min=1e-8)) # Dim: (n_batch, n_channels, n_bins, n_frames)
         # Dim = (n_batch, n_channels, timesteps)
-        mag = input
+        mag = input.clone()
         data = mag.transpose(1, 2) # Dim: (n_batch, timesteps, n_channels)
         # data = data.reshape(data.size(0), data.size(1), -1) # Dim: (n_batch, n_frames, n_bins * n_channels)
         self.blstm.flatten_parameters()
