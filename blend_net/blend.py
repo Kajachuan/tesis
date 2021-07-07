@@ -12,16 +12,15 @@ class BlendNet(nn.Module):
         self.channels = channels
         self.stft = STFT(nfft, hop)
         self.blstm = nn.LSTM(input_size=channels, hidden_size=4, num_layers=2,
-                             batch_first=False, dropout=0.3, bidirectional=True)
+                             batch_first=True, dropout=0.3)
         self.linear = nn.Linear(8, channels)
         self.activation = nn.Sigmoid()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # input Dim = (batch, channels, timesteps)
-        data = input.permute(2, 0, 1)
+        data = input.transpose(1, 2) # Dim = (batch, timesteps, channels)
         self.blstm.flatten_parameters()
-        data = self.blstm(data)[0] # Dim = (timesteps, batch, 8)
-        data = data.transpose(0, 1) # Dim = (batch, timesteps, 8)
+        data = self.blstm(data)[0] # Dim = (batch, timesteps, 8)
         data = self.linear(data) # Dim = (batch, timesteps, channels)
         data = data.transpose(1, 2) # Dim = (batch, channels, timesteps)
         mask = self.activation(data) # Dim = (batch, channels, timesteps)
