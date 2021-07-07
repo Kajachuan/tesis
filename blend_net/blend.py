@@ -11,26 +11,19 @@ class BlendNet(nn.Module):
         self.hop = hop
         self.channels = channels
         self.stft = STFT(nfft, hop)
+        self.conv = nn.Conv1d(in_channels=channels, out_channels=16, kernel_size=3, padding=1)
         self.blstm = nn.LSTM(input_size=self.bins * channels, hidden_size=4, num_layers=2,
                              batch_first=True, dropout=0.3, bidirectional=True)
-        self.linear = nn.Linear(8, self.bins * channels)
+        self.linear = nn.Linear(16, channels)
         self.activation = nn.Sigmoid()
 
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-        stft = self.stft(data)
-        mag, phase = stft[..., 0], stft[..., 1]
-        mag_db = 10 * torch.log10(torch.clamp(mag, min=1e-8)) # Dim: (n_batch, n_channels, n_bins, n_frames)
-        data = mag_db.transpose(1,3) # Dim: (n_batch, n_frames, n_bins, n_channels)
-        data = data.reshape(data.size(0), data.size(1), -1) # Dim: (n_batch, n_frames, n_bins * n_channels)
-        self.blstm.flatten_parameters()
-        data = self.blstm(data)[0] # Dim: (n_batch, n_frames, hidden)
-        data = self.linear(data) # Dim: (n_batch, n_frames, n_bins * n_channels)
-        data = data.reshape(data.size(0), data.size(1), self.bins, self.channels) # Dim: (n_batch, n_frames, n_bins, n_channels)
-        data = data.transpose(1, 3) # Dim: (n_batch, n_channels, n_bins, n_frames)
-        mask = self.activation(data)
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        # input Dim = (batch, channels, timesteps)
+        data = self.conv(input) # Dim = (batch, 16, timesteps)
+        data = data.transpose(1, 2) # Dim = (batch, timesteps, 16)
+        data = data.linear(data) # Dim = (batch, timesteps, channels)
+        data = data.transpose(1, 2) # Dim = (batch, channels, timesteps)
+        mask = self.activation(data) # Dim = (batch, channels, timesteps)
 
-        estim_mag = mag * mask
-        estim_stft = torch.stack((estim_mag * torch.cos(phase),
-                                  estim_mag * torch.sin(phase)), dim=-1)
-        estimates = self.stft(estim_stft, inverse=True)
+        estimates = input * mask
         return estimates
