@@ -18,7 +18,7 @@ class BlendNet(nn.Module):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # input Dim = (batch, channels, timesteps)
-        data = data.permute(2, 0, 1)
+        data = input.permute(2, 0, 1)
         self.blstm.flatten_parameters()
         data = self.blstm(data)[0] # Dim = (timesteps, batch, 8)
         data = data.transpose(0, 1) # Dim = (batch, timesteps, 8)
