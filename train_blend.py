@@ -10,6 +10,7 @@ from dataset.dataset import MUSDB18Dataset
 from spectrogram_model.model import SpectrogramModel
 from wave_model.model import WaveModel
 from blend_net.blend import BlendNet
+from torchviz import make_dot
 
 def train(network, train_loader, device, stft_model, wave_model, optimizer):
     batch_loss, count = 0, 0
@@ -45,7 +46,8 @@ def valid(network, valid_loader, device, stft_model, wave_model):
             # wave = wave_model(x)
             y_hat = network(x) # CAMBIAR DESPUÉS
 
-            loss = mse_loss(y_hat, y).detach()
+            loss = mse_loss(y_hat, y)
+            make_dot(loss, params=dict(network.named_parameters()))
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)
         return batch_loss / count
