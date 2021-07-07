@@ -45,7 +45,7 @@ def valid(network, valid_loader, device, stft_model, wave_model):
             # wave = wave_model(x)
             y_hat = network(x) # CAMBIAR DESPUÉS
 
-            loss = mse_loss(y_hat, y)
+            loss = mse_loss(y_hat, y).detach()
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)
         return batch_loss / count
