@@ -21,7 +21,7 @@ class BlendNet(nn.Module):
         # input Dim = (batch, channels, timesteps)
         data = self.conv(input) # Dim = (batch, 16, timesteps)
         data = data.transpose(1, 2) # Dim = (batch, timesteps, 16)
-        data = data.linear(data) # Dim = (batch, timesteps, channels)
+        data = self.linear(data) # Dim = (batch, timesteps, channels)
         data = data.transpose(1, 2) # Dim = (batch, channels, timesteps)
         mask = self.activation(data) # Dim = (batch, channels, timesteps)
 
