@@ -100,6 +100,7 @@ class BlendNet(nn.Module):
             data = self.deconvs[i](data, idx, size)
 
         data = data.reshape(data.size(0), 2, self.channels, self.bins, -1) # Dim = (batch, 2, channels, bins, frames)
+        mag = mag.reshape(mag.size(0), 2, self.channels, self.bins, -1)
         mask = self.activation(data)
         estim_mag = mag * mask
         mag_stft, mag_wave = estim_mag[:, 0, ...], estim_mag[:, 1, ...]
