@@ -34,7 +34,7 @@ class BlendNet(nn.Module):
         data, idx = self.pool(data) # Dim = (batch, 8, (bins-2)//2, (frames-2)//2)
         data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (batch, (bins-2)//2, (frames-2)//2)
         data = data.transpose(1, 2) # Dim = (batch, (frames-2)//2, (bins-2)//2 * 8)
-        data = self.rnn(data) # Dim = (batch, (frames-2)//2, (bins-2)//2 * 8)
+        data = self.rnn(data)[0] # Dim = (batch, (frames-2)//2, (bins-2)//2 * 8)
         data = data.transpose(1, 2) # Dim = (batch, (bins-2)//2 * 8, (frames-2)//2)
         data = data.reshape(data.size(0), -1, self.bins // 2, data.size(-1)) # Dim = (batch, 8, (bins-2)//2, (frames-2)//2)
         data = self.unpool(data, idx, out_size) # Dim = (batch, 8, bins-2, frames-2)
