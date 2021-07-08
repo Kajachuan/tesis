@@ -20,11 +20,11 @@ def train(network, train_loader, device, stft_model, wave_model, optimizer):
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad()
 
-        # with torch.no_grad():
-        #     _, _, wave_stft = stft_model(x)
-        #     wave = wave_model(x)
+        with torch.no_grad():
+            _, _, wave_stft = stft_model(x)
+            wave = wave_model(x)
 
-        y_hat = network(x) # CAMBIAR DESPUÉS
+        y_hat = network(wave_stft, wave)
         loss = mse_loss(y_hat, y)
         loss.backward()
         optimizer.step()
@@ -40,11 +40,9 @@ def valid(network, valid_loader, device, stft_model, wave_model):
         for x, y in pbar:
             pbar.set_description("Validando")
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
-
-            # _, _, wave_stft = stft_model(x)
-            # wave = wave_model(x)
-            y_hat = network(x) # CAMBIAR DESPUÉS
-
+            _, _, wave_stft = stft_model(x)
+            wave = wave_model(x)
+            y_hat = network(wave_stft, wave)
             loss = mse_loss(y_hat, y)
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)
@@ -83,25 +81,22 @@ def main():
     print("GPU disponible:", use_cuda)
     device = torch.device("cuda:0" if use_cuda else "cpu")
 
-    # print("Cargando modelo de STFT")
-    # stft_state = torch.load(f"{args.path_stft}/{args.target}/best_checkpoint", map_location=device)
-    # stft_model = SpectrogramModel(*stft_state["args"]).to(device)
-    # stft_model.load_state_dict(stft_state["state_dict"])
-    # stft_model.eval()
-    # for param in stft_model.parameters():
-    #     param.requires_grad = False
-    stft_model = None
+    print("Cargando modelo de STFT")
+    stft_state = torch.load(f"{args.path_stft}/{args.target}/best_checkpoint", map_location=device)
+    stft_model = SpectrogramModel(*stft_state["args"]).to(device)
+    stft_model.load_state_dict(stft_state["state_dict"])
+    stft_model.eval()
+    for param in stft_model.parameters():
+        param.requires_grad = False
 
-    # print("Cargando modelo de Wave")
-    # wave_state = torch.load(f"{args.path_wave}/{args.target}/best_checkpoint", map_location=device)
-    # wave_model = WaveModel(*wave_state["args"]).to(device)
-    # wave_model.load_state_dict(wave_state["state_dict"])
-    # wave_model.eval()
-    # for param in wave_model.parameters():
-    #     param.requires_grad = False
-    wave_model = None
+    print("Cargando modelo de Wave")
+    wave_state = torch.load(f"{args.path_wave}/{args.target}/best_checkpoint", map_location=device)
+    wave_model = WaveModel(*wave_state["args"]).to(device)
+    wave_model.load_state_dict(wave_state["state_dict"])
+    wave_model.eval()
+    for param in wave_model.parameters():
+        param.requires_grad = False
 
-    # model_args = [args.layers_spec, args.layers_wave, args.channels, args.nfft, args.hop, args.activation, args.wave_type]
     model_args = [args.channels, args.nfft, args.hop]
     network = BlendNet(*model_args).to(device)
 
