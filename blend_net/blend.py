@@ -99,11 +99,9 @@ class BlendNet(nn.Module):
             idx, size = bypass[len(self.deconvs) - 1 - i]
             data = self.deconvs[i](data, idx, size)
 
-        data = data.reshape(data.size(0), 2, self.channels, self.bins, -1) # Dim = (batch, 2, channels, bins, frames)
-        mag = mag.reshape(mag.size(0), 2, self.channels, self.bins, -1)
         mask = self.activation(data)
         estim_mag = mag * mask
-        mag_stft, mag_wave = estim_mag[:, 0, ...], estim_mag[:, 1, ...]
+        mag_stft, mag_wave = mag[:, :2, ...], estim_mag[:, 2:, ...]
 
         estim_stft = torch.stack((mag_stft * torch.cos(phase_stft) + mag_wave * torch.cos(phase_wave),
                                   mag_stft * torch.sin(phase_stft) + mag_wave * torch.sin(phase_wave)), dim=-1)
