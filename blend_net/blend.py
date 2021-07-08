@@ -86,7 +86,7 @@ class BlendNet(nn.Module):
         blend = torch.stack((wave_stft, wave), dim=1) # Dim = (batch, 2, channels, timesteps)
         blend = blend.reshape(blend.size(0), -1, blend.size(-1)) # Dim = (batch, 2 * channels, timesteps)
         stft = self.stft(blend) # Dim = (batch, 2 * channels, bins, frames, 2)
-        mag, phase_stft, phase_wave = stft[..., 0], stft[:, :2, :, 1], stft[:, 2:, :, 1]
+        mag, phase_stft, phase_wave = stft[..., 0], stft[:, :2, ..., 1], stft[:, 2:, ..., 1]
 
         data = 10 * torch.log10(torch.clamp(mag, min=1e-8))
         bypass = {}
