@@ -50,7 +50,6 @@ def valid(network, valid_loader, device, stft_model, wave_model):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--activation", type=str, choices=["sigmoid", "tanh"], help="Función de activación")
     parser.add_argument("--batch-size", type=int, default=10, help="Tamaño del batch")
     parser.add_argument("--channels", type=int, default=2, help="Número de canales de audio")
     parser.add_argument("--checkpoint", type=str, help="Directorio de los checkpoints")
@@ -58,8 +57,7 @@ def main():
     parser.add_argument("--duration", type=float, default=5.0, help="Duración de cada canción")
     parser.add_argument("--epochs", type=int, default=10, help="Número de épocas")
     parser.add_argument("--hop", type=int, default=1024, help="Tamaño del hop de la STFT")
-    parser.add_argument("--layers-spec", type=int, default=5, help="Número de capas de la rama spec")
-    parser.add_argument("--layers-wave", type=int, default=5, help="Número de capas de la rama wave")
+    parser.add_argument("--layers", type=int, default=5, help="Número de capas")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
     parser.add_argument("--nfft", type=int, default=4096, help="Tamaño de la FFT de la STFT")
     parser.add_argument("--output", type=str, help="Directorio de salida")
@@ -67,9 +65,8 @@ def main():
     parser.add_argument("--path-stft", type=str, help="Ruta del modelo de STFT")
     parser.add_argument("--path-wave", type=str, help="Ruta del modelo de Wave")
     parser.add_argument("--root", type=str, help="Ruta del dataset")
-    parser.add_argument("--samples", type=int, default=1, help="Muestras por cancion")
+    parser.add_argument("--samples", type=int, default=1, help="Muestras por cancion de entrenamiento")
     parser.add_argument("--target", type=str, default="vocals", help="Instrumento a separar")
-    parser.add_argument("--wave-type", type=str, choices=["cnn", "rnn"], help="Tipo de red de la rama wave")
     parser.add_argument("--weight-decay", type=float, default=0, help="Decaimiento de los pesos de Adam")
     parser.add_argument("--workers", type=int, default=0, help="Número de workers para cargar los datos")
 
@@ -97,7 +94,7 @@ def main():
     for param in wave_model.parameters():
         param.requires_grad = False
 
-    model_args = [args.channels, args.nfft, args.hop]
+    model_args = [args.layers, args.channels, args.nfft, args.hop]
     network = BlendNet(*model_args).to(device)
 
     if args.dataset == "musdb":

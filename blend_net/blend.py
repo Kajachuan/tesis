@@ -1,50 +1,114 @@
 import torch
 import torch.nn as nn
+from typing import Tuple
 from utils.stft import STFT
 
+class ConvLayer(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int = -1) -> None:
+        """
+        Argumentos:
+            in_channels -- Número de canales de entrada
+            out_channels -- Número de canales de salida
+        """
+        super(ConvLayer, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        if out_channels == -1:
+            self.out_channels = 2 * self.in_channels
+        self.conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3)
+        self.batch_norm = nn.BatchNorm2d(out_channels)
+        self.relu = nn.LeakyReLU()
+        self.pool = nn.MaxPool2d(kernel_size=2, return_indices=True)
+
+    def forward(self, data: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Size]:
+        """
+        Argumentos:
+            data -- Datos de entrada de dimensión (batch, in_channels, height, width)
+        Retorna:
+            Tupla con:
+                - Resultado de dimensión (batch, out_channels, (features-2)//2, (width-2)//2)
+                - Índices del max pooling
+                - Tamaño original para hacer el upsampling
+        """
+        data = self.conv(data) # Dim = (batch, out_channels, height-2, width-2)
+        size = data.size()
+        data = self.batch_norm(data)
+        data = self.relu(data)
+        data, idx = self.pool(data) # Dim = (batch, out_channels, (height-2)//2, (width-2)//2)
+        return data, idx, size
+
+class DeconvLayer(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int = -1) -> None:
+        """
+        Argumentos:
+            in_channels -- Número de canales de entrada
+            out_channels -- Número de canales de salida
+        """
+        super(DeconvLayer, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        if out_channels == -1:
+            self.out_channels = self.in_channels // 2
+        self.unpool = nn.MaxUnpool2d(2)
+        self.deconv = nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3)
+        self.batch_norm = nn.BatchNorm2d(out_channels)
+        self.relu = nn.LeakyReLU()
+
+    def forward(self, data: torch.Tensor, idx: torch.Tensor, size: torch.Tensor) -> torch.Tensor:
+        """
+        Argumentos:
+            data -- Datos de entrada de dimensión (batch, in_channels, (height-2)//2, (width-2)//2)
+            idx -- Índices obtenidos con el max pooling
+            size -- Tamaño resultante del upsampling
+        Retorna:
+            Tupla con:
+                - Resultado de dimensión (batch, out_channels, height, width)
+        """
+        data = self.unpool(data, idx, size) # Dim = (batch, in_channels, height-2, width-2)
+        data = self.deconv(data) # Dim = (batch, out_channels, height, width)
+        data = self.batch_norm(data)
+        data = self.relu(data)
+        return data
+
 class BlendNet(nn.Module):
-    def __init__(self, channels: int, nfft: int, hop: int) -> None:
+    def __init__(self, layers: int, channels: int, nfft: int, hop: int) -> None:
         super(BlendNet, self).__init__()
 
         self.bins = nfft // 2 + 1
-        self.nfft = nfft
-        self.hop = hop
         self.channels = channels
         self.stft = STFT(nfft, hop)
-        self.conv = nn.Conv2d(in_channels=2 * channels, out_channels=8, kernel_size=3)
-        self.pool = nn.MaxPool2d(2, return_indices=True)
-        # self.rnn = nn.GRU(input_size=(self.bins - 2) // 2 * 8, hidden_size=(self.bins - 2) // 2 * 4,
-        #                   num_layers=2, batch_first=True, dropout=0.3, bidirectional=True)
-        self.unpool = nn.MaxUnpool2d(2)
-        self.deconv = nn.ConvTranspose2d(in_channels=8, out_channels=2 * channels, kernel_size=3)
-        self.activation = nn.Softmax(dim=-1)
+
+        self.convs = nn.ModuleList([ConvLayer(in_channels=2 * channels, out_channels=8)] +
+                                   [ConvLayer(in_channels=2**(i+1)) for i in range(2, layers+1)])
+
+        self.deconvs = nn.ModuleList([DeconvLayer(in_channels=2**(i+2)) for i in range(layers, 1, -1)] +
+                                     [DeconvLayer(in_channels=8, out_channels=2 * channels)])
+
+        self.activation = nn.Softmax(dim=1)
 
     def forward(self, wave_stft: torch.Tensor, wave: torch.Tensor) -> torch.Tensor:
-        stft_stft = self.stft(wave_stft)
-        mag_stft, phase_stft = stft_stft[..., 0], stft_stft[..., 1]
+        blend = torch.stack((wave_stft, wave), dim=1) # Dim = (batch, 2, channels, timesteps)
+        blend = blend.reshape(blend.size(0), -1, blend.size(-1)) # Dim = (batch, 2 * channels, timesteps)
+        stft = self.stft(blend) # Dim = (batch, 2 * channels, bins, frames, 2)
+        mag, phase_stft, phase_wave = stft[..., 0], stft[:, :2, :, 1], stft[:, 2:, :, 1]
 
-        stft_wave = self.stft(wave)
-        mag_wave, phase_wave = stft_wave[..., 0], stft_wave[..., 1]
+        data = 10 * torch.log10(torch.clamp(mag, min=1e-8))
+        bypass = {}
 
-        mag = torch.stack((mag_stft, mag_wave), dim=1) # Dim = (batch, 2, channels, bins, frames)
-        data = 10 * torch.log10(torch.clamp(mag, min=1e-8)) # Dim = (batch, 2, channels, bins, frames)
-        data = data.reshape(data.size(0), -1, data.size(-2), data.size(-1)) # Dim = (batch, 2 * channels, bins, frames)
-        data = self.conv(data) # Dim = (batch, 8, bins-2, frames-2)
-        out_size = data.size()
-        data, idx = self.pool(data) # Dim = (batch, 8, (bins-2)//2, (frames-2)//2)
-        # data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (batch, (bins-2)//2, (frames-2)//2)
-        # data = data.transpose(1, 2) # Dim = (batch, (frames-2)//2, (bins-2)//2 * 8)
-        # data = self.rnn(data)[0] # Dim = (batch, (frames-2)//2, (bins-2)//2 * 8)
-        # data = data.transpose(1, 2) # Dim = (batch, (bins-2)//2 * 8, (frames-2)//2)
-        # data = data.reshape(data.size(0), -1, (self.bins - 2) // 2, data.size(-1)) # Dim = (batch, 8, (bins-2)//2, (frames-2)//2)
-        data = self.unpool(data, idx, out_size) # Dim = (batch, 8, bins-2, frames-2)
-        data = self.deconv(data) # Dim = (batch, 2 * channels, bins, frames)
-        data = data.reshape(data.size(0), 2, -1, data.size(-2), data.size(-1)) # Dim = (batch, 2, channels, bins, frames)
-        data = self.activation(data)
+        for i in range(len(self.convs)):
+            data, idx, size = self.convs[i](data)
+            bypass[i] = (idx, size)
 
-        estim_stft = torch.stack((data[:, 0, ...] * (mag_stft * torch.cos(phase_stft)) +
-                                  data[:, 1, ...] * (mag_wave * torch.cos(phase_wave)),
-                                  data[:, 0, ...] * (mag_stft * torch.sin(phase_stft)) +
-                                  data[:, 1, ...] * (mag_wave * torch.sin(phase_wave))), dim=-1)
+        for i in range(len(self.deconvs)):
+            idx, size = bypass[len(self.deconvs) - 1 - i]
+            data = self.deconvs[i](data, idx, size)
+
+        data = data.reshape(data.size(0), 2, self.channels, self.bins, -1) # Dim = (batch, 2, channels, bins, frames)
+        mask = self.activation(data)
+        estim_mag = mag * mask
+        mag_stft, mag_wave = estim_mag[:, 0, ...], estim_mag[:, 1, ...]
+
+        estim_stft = torch.stack((mag_stft * torch.cos(phase_stft) + mag_wave * torch.cos(phase_wave),
+                                  mag_stft * torch.sin(phase_stft) + mag_wave * torch.sin(phase_wave)), dim=-1)
         data = self.stft(estim_stft, inverse=True)
         return data
