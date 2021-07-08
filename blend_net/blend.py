@@ -80,7 +80,7 @@ class BlendNet(nn.Module):
         self.deconvs = nn.ModuleList([DeconvLayer(in_channels=2**(i+2)) for i in range(layers, 1, -1)] +
                                      [DeconvLayer(in_channels=8, out_channels=2 * channels)])
 
-        self.activation = nn.Softmax(dim=1)
+        self.activation = nn.Sigmoid()
 
     def forward(self, wave_stft: torch.Tensor, wave: torch.Tensor) -> torch.Tensor:
         blend = torch.stack((wave_stft, wave), dim=1) # Dim = (batch, 2, channels, timesteps)
