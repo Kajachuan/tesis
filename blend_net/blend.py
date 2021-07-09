@@ -71,10 +71,11 @@ class BlendNet(nn.Module):
     """
     Modelo de mezcla de modelos de espectrograma y wave
     """
-    def __init__(self, layers: int, channels: int, nfft: int, hop: int, activation: str) -> None:
+    def __init__(self, layers_spec: int, layers_wave: int channels: int, nfft: int, hop: int, activation: str) -> None:
         """
         Argumentos:
-            layers -- Número de capas
+            layers_spec -- Número de capas de la rama spec
+            layers_wave -- Número de capas de la rama wave
             channels -- Número de canales de audio
             nfft -- Número de puntos para calcular la nfft
             hop -- Número de puntos de hop
@@ -89,15 +90,15 @@ class BlendNet(nn.Module):
 
         self.conv_stft = nn.Sequential(*([STFTConvLayer(features=self.bins, in_channels=blend * channels, out_channels=8)] +
                                          [STFTConvLayer(features=(self.bins - (2**i - 2)) // 2**(i-1), in_channels=2**(i+1))
-                                          for i in range(2, layers + 1)]))
+                                          for i in range(2, layers_spec + 1)]))
 
-        self.linear_stft = nn.Linear(in_features=(self.bins - (2**(layers+1) - 2)) // 2**(layers) * 2**(layers+2),
+        self.linear_stft = nn.Linear(in_features=(self.bins - (2**(layers_spec+1) - 2)) // 2**(layers_spec) * 2**(layers_spec+2),
                                      out_features=blend * self.bins * channels)
 
-        self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * channels, out_channels=8)] +
-                                         [WaveConvLayer(in_channels=2**(i+1)) for i in range(2, layers + 1)]))
+        self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * channels, out_channels=16)] +
+                                         [WaveConvLayer(in_channels=2**(i+2)) for i in range(2, layers_wave + 1)]))
 
-        self.linear_wave = nn.Linear(in_features=2**(layers + 2), out_features=(blend + 1) * channels)
+        self.linear_wave = nn.Linear(in_features=2**(layers_wave + 2), out_features=(blend + 1) * channels)
 
         if activation == "sigmoid":
             self.activation = nn.Sigmoid()
