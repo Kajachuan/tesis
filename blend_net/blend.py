@@ -98,7 +98,7 @@ class BlendNet(nn.Module):
         self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * channels, out_channels=16)] +
                                          [WaveConvLayer(in_channels=2**(i+2)) for i in range(2, layers_wave + 1)]))
 
-        self.linear_wave = nn.Linear(in_features=2**(layers_wave + 2), out_features=(blend + 1) * channels)
+        self.linear_wave = nn.Linear(in_features=2**(layers_wave + 3), out_features=(blend + 1) * channels)
 
         if activation == "sigmoid":
             self.activation = nn.Sigmoid()
