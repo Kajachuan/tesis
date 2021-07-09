@@ -71,7 +71,7 @@ class BlendNet(nn.Module):
     """
     Modelo de mezcla de modelos de espectrograma y wave
     """
-    def __init__(self, layers_spec: int, layers_wave: int channels: int, nfft: int, hop: int, activation: str) -> None:
+    def __init__(self, layers_spec: int, layers_wave: int, channels: int, nfft: int, hop: int, activation: str) -> None:
         """
         Argumentos:
             layers_spec -- Número de capas de la rama spec
