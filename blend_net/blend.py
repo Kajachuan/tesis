@@ -81,26 +81,23 @@ class BlendNet(nn.Module):
             activation -- Función de activación a utilizar
         """
         super(BlendNet, self).__init__()
-        self.layers = layers
         self.channels = channels
-        self.nfft = nfft
-        self.bins = self.nfft // 2 + 1
-        self.hop = hop
+        self.bins = nfft // 2 + 1
         blend = 2
 
-        self.stft = STFT(self.nfft, self.hop)
+        self.stft = STFT(nfft, hop)
 
-        self.conv_stft = nn.Sequential(*([STFTConvLayer(features=self.bins, in_channels=blend * self.channels, out_channels=8)] +
+        self.conv_stft = nn.Sequential(*([STFTConvLayer(features=self.bins, in_channels=blend * channels, out_channels=8)] +
                                          [STFTConvLayer(features=(self.bins - (2**i - 2)) // 2**(i-1), in_channels=2**(i+1))
-                                          for i in range(2, self.layers + 1)]))
+                                          for i in range(2, layers + 1)]))
 
-        self.linear_stft = nn.Linear(in_features=(self.bins - (2**(self.layers+1) - 2)) // 2**(self.layers) * 2**(self.layers+2),
-                                     out_features=blend * self.bins * self.channels)
+        self.linear_stft = nn.Linear(in_features=(self.bins - (2**(layers+1) - 2)) // 2**(layers) * 2**(layers+2),
+                                     out_features=blend * self.bins * channels)
 
-        self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * self.channels, out_channels=8)] +
-                                         [WaveConvLayer(in_channels=2**(i+1)) for i in range(2, self.layers + 1)]))
+        self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * channels, out_channels=8)] +
+                                         [WaveConvLayer(in_channels=2**(i+1)) for i in range(2, layers + 1)]))
 
-        self.linear_wave = nn.Linear(in_features=2**(self.layers + 2), out_features=(blend + 1) * self.channels)
+        self.linear_wave = nn.Linear(in_features=2**(layers + 2), out_features=(blend + 1) * channels)
 
         if activation == "sigmoid":
             self.activation = nn.Sigmoid()
