@@ -143,11 +143,11 @@ class BlendNet(nn.Module):
         self.deconvs2d = nn.ModuleList([DeconvLayer2D(in_channels=2**(i+2)) for i in range(layers, 1, -1)] +
                                        [DeconvLayer2D(in_channels=8, out_channels=2 * channels)])
 
-        self.convs1d = nn.ModuleList([ConvLayer2D(in_channels=3 * channels, out_channels=8)] +
-                                     [ConvLayer2D(in_channels=2**(i+1)) for i in range(2, layers+1)])
+        self.convs1d = nn.ModuleList([ConvLayer1D(in_channels=3 * channels, out_channels=8)] +
+                                     [ConvLayer1D(in_channels=2**(i+1)) for i in range(2, layers+1)])
 
-        self.deconvs1d = nn.ModuleList([DeconvLayer2D(in_channels=2**(i+2)) for i in range(layers, 1, -1)] +
-                                       [DeconvLayer2D(in_channels=8, out_channels=3 * channels)])
+        self.deconvs1d = nn.ModuleList([DeconvLayer1D(in_channels=2**(i+2)) for i in range(layers, 1, -1)] +
+                                       [DeconvLayer1D(in_channels=8, out_channels=3 * channels)])
 
         self.activation = nn.Sigmoid()
 
