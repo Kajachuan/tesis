@@ -178,7 +178,7 @@ class BlendNet(nn.Module):
 
         # Dominio de tiempo
         blend = torch.stack((wave_stft, wave, blend_stft), dim=1) # Dim = (batch, 3, channels, timesteps)
-        blend = blend.reshape(blend.size(0), -1, blend.size(-1)) # Dim = (batch, 3 * channels, timesteps)
+        data = blend.reshape(blend.size(0), -1, blend.size(-1)) # Dim = (batch, 3 * channels, timesteps)
 
         bypass = {}
         for i in range(len(self.convs1d)):
