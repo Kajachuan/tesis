@@ -13,17 +13,15 @@ class STFTConvLayer(nn.Module):
             out_channels -- Número de canales de salida
         """
         super(STFTConvLayer, self).__init__()
-        self.features = features
-        self.in_channels = in_channels
-        self.out_channels = out_channels
         if out_channels == -1:
-            self.out_channels = 2 * self.in_channels
-        self.conv = nn.Conv2d(in_channels=self.in_channels,
-                              out_channels=self.out_channels,
+            out_channels = 2 * in_channels
+        self.out_channels = out_channels
+        self.conv = nn.Conv2d(in_channels=in_channels,
+                              out_channels=out_channels,
                               kernel_size=3,
                               padding=(0,1))
         self.pool = nn.MaxPool2d(kernel_size=(2, 1))
-        self.batch_norm = nn.BatchNorm1d((self.features - 2) // 2)
+        self.batch_norm = nn.BatchNorm1d((features - 2) // 2)
         self.relu = nn.LeakyReLU()
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -52,16 +50,12 @@ class WaveConvLayer(nn.Module):
             out_channels -- Número de canales de salida
         """
         super(WaveConvLayer, self).__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
         if out_channels == -1:
-            self.out_channels = 2 * self.in_channels
-        self.conv = nn.Conv1d(in_channels=self.in_channels,
-                              out_channels=self.out_channels,
-                              kernel_size=3,
-                              padding=1)
-        self.batch_norm = nn.BatchNorm1d(self.out_channels)
-        self.relu = nn.LeakyReLU()
+            out_channels = 2 * in_channels
+        self.seq = nn.Sequential(nn.Conv1d(in_channels=in_channels, out_channels=out_channels,
+                                           kernel_size=3, padding=1),
+                                 nn.BatchNorm1d(num_features=out_channels),
+                                 nn.LeakyReLU())
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         """
@@ -71,10 +65,7 @@ class WaveConvLayer(nn.Module):
         Retorna:
             Resultado de dimensión (n_batch, out_channels, timesteps)
         """
-        data = self.conv(data) # Dim = (n_batch, out_channels, timesteps)
-        data = self.batch_norm(data) # Dim = (n_batch, out_channels, timesteps)
-        data = self.relu(data) # Dim = (n_batch, out_channels, timesteps)
-        return data
+        return self.seq(data)
 
 class BlendNet(nn.Module):
     """
