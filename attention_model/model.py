@@ -49,7 +49,7 @@ class Encoder(nn.Module):
         mag_db = mag_db.transpose(1, 2) # Dim: (batch, frames, bins * in_channels)
         mag_db = mag_db + pos_encoding(mag_db.size(-1), mag_db.size(1), mag_db.device)
 
-        mag = self.attention(mag_db, mag_db, mag_db)
+        mag, _ = self.attention(mag_db, mag_db, mag_db)
         mag = mag + mag_db
         skip = self.norm_att(mag)
         mag = self.linear(skip)
@@ -105,7 +105,7 @@ class Decoder(nn.Module):
         mag_db = mag_db.transpose(1, 2) # Dim: (batch, frames, bins * out_channels)
         mag_db = mag_db + pos_encoding(mag_db.size(-1), mag_db.size(1), mag_db.device)
 
-        mag = self.attention(mag_skip, mag_skip, mag_db)
+        mag, _ = self.attention(mag_skip, mag_skip, mag_db)
         mag = mag + mag_db
         skip = self.norm_att(mag)
         mag = self.linear(skip)
