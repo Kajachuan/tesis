@@ -4,8 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils.stft import STFT
 
-def pos_encoding(embed_dim, length):
-    pos_enc = torch.zeros(length, embed_dim)
+def pos_encoding(embed_dim, length, device):
+    pos_enc = torch.zeros(length, embed_dim, device=device)
     pos = torch.arange(0, length).unsqueeze(1)
     div = torch.exp(torch.arange(0, embed_dim, 2).float() * (-math.log(10000.0) / embed_dim))
     pos_enc[:, 0::2] = torch.sin(pos * div)
@@ -47,7 +47,7 @@ class Encoder(nn.Module):
         mag_db = mag_db.transpose(1, 2) # Dim: (batch, bins, in_channels, frames)
         mag_db = mag_db.reshape(mag_db.size(0), -1, mag_db.size(-1)) # Dim: (batch, bins * in_channels, frames)
         mag_db = mag_db.transpose(1, 2) # Dim: (batch, frames, bins * in_channels)
-        mag_db = mag_db + pos_encoding(mag_db.size(-1), mag_db.size(1))
+        mag_db = mag_db + pos_encoding(mag_db.size(-1), mag_db.size(1), self.device)
 
         mag = self.attention(mag_db, mag_db, mag_db)
         mag = mag + mag_db
@@ -103,7 +103,7 @@ class Decoder(nn.Module):
         mag_db = mag_db.transpose(1, 2) # Dim: (batch, bins, out_channels, frames)
         mag_db = mag_db.reshape(mag_db.size(0), -1, mag_db.size(-1)) # Dim: (batch, bins * out_channels, frames)
         mag_db = mag_db.transpose(1, 2) # Dim: (batch, frames, bins * out_channels)
-        mag_db = mag_db + pos_encoding(mag_db.size(-1), mag_db.size(1))
+        mag_db = mag_db + pos_encoding(mag_db.size(-1), mag_db.size(1), self.device)
 
         mag = self.attention(mag_skip, mag_skip, mag_db)
         mag = mag + mag_db
