@@ -153,4 +153,6 @@ class AttentionModel(nn.Module):
             x = decode(x, mag_skip)
 
         x = x * std + mean
+        if x.size(-1) != mix.size(-1):
+            x = zero_pad(x, mix)
         return x
