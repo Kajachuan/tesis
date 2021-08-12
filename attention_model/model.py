@@ -31,16 +31,52 @@ class BLSTM(nn.Module):
         data = data.transpose(1, 2) # Dim: (batch, hidden_size, timesteps)
         return data
 
+class AttentionLayer(nn.Module):
+    def __init__(self, d_model: int, heads: int) -> None:
+        '''
+        Argumentos:
+            d_model -- Tamaño de la dimensión de embedding
+            heads -- Cantidad de heads para MultiheadAttention
+        '''
+        super(AttentionLayer, self).__init__()
+        self.attn = nn.MultiheadAttention(d_model, heads, batch_first=True)
+        self.linear1 = nn.Linear(d_model, 4 * d_model)
+        self.linear2 = nn.Linear(4 * d_model, d_model)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.relu = nn.ReLU()
+
+    def forward(self, data: torch.Tensor) -> torch.Tensor:
+        '''
+        Argumentos:
+            data -- Tensor de dimensión (batch, d_model, timesteps)
+        Retorna:
+            Tensor de dimensión (batch, d_model, timesteps)
+        '''
+        data = data.transpose(1, 2) # Dim: (batch, timesteps, d_model)
+        skip = self.attn(data, data, data)[0]
+        data = data + skip
+        data = self.norm1(data)
+        skip = self.linear2(self.relu(self.linear1(data)))
+        data = data + skip
+        data = self.norm2(data)
+        data = data.transpose(1, 2) # Dim: (batch, d_model, timesteps)
+        return data
+
 class AttentionModel(nn.Module):
-    def __init__(self,
-                 layers: int = 6,
-                 channels: int = 64,
-                 lstm_layers: int = 2) -> None:
+    def __init__(self, 
+                 layers: int = 6, 
+                 channels: int = 64, 
+                 lstm_layers: int = 2, 
+                 attn_layers: int = 2, 
+                 heads: int = 4) -> None:
         '''
         Argumentos:
             layers -- Cantidad de capas (encoder/decoder)
             channels -- Canales de salida del primer encoder
-            kernel_size -- Tamaño del kernel
+            lstm_layers -- Cantidad de capas BLSTM
+            attn_layers -- Cantidad de capas de atención
+            heads -- Cantidad de heads de atención múltiple (válido para attn_layers > 0)
         '''
         super(AttentionModel, self).__init__()
         self.layers = layers
@@ -77,7 +113,8 @@ class AttentionModel(nn.Module):
 
         self.lstm = BLSTM(channels, lstm_layers) if lstm_layers else None
 
-        # self.attention = 
+        self.attn = nn.Sequential(*[AttentionLayer(channels, heads) 
+                                    for _ in range(attn_layers)]) if attn_layers else None
 
         for sub in self.modules():
             if isinstance(sub, (nn.Conv1d, nn.ConvTranspose1d)):
@@ -125,6 +162,8 @@ class AttentionModel(nn.Module):
             saved.append(x)
         if self.lstm:
             x = self.lstm(x)
+        if self.attn:
+            x = self.attn(x)
         for decode in self.decoder:
             skip = center_trim(saved.pop(-1), x.size(-1))
             x = x + skip
