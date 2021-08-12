@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
 from attention_model.model import AttentionModel
+from attention_model.utils import center_trim
 
 def train(network, train_loader, device, optimizer):
     batch_loss, count = 0, 0
@@ -18,11 +19,14 @@ def train(network, train_loader, device, optimizer):
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad()
         y_hat = network(x)
+        y = center_trim(y, y_hat.size(-1))
         loss = mse_loss(y_hat, y)
         loss.backward()
         optimizer.step()
         batch_loss += loss.item() * y.size(0)
         count += y.size(0)
+
+        del x, y, y_hat, loss
     return batch_loss / count
 
 def valid(network, valid_loader, device):
@@ -34,6 +38,7 @@ def valid(network, valid_loader, device):
             pbar.set_description("Validando")
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             y_hat = network(x)
+            y_hat = center_trim(y_hat, y.size(-1))
             loss = mse_loss(y_hat, y)
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)
