@@ -8,7 +8,8 @@ def pos_encoding(embed_dim, length, device):
     div = torch.exp(torch.arange(0, embed_dim, 2).float() * (-math.log(10000.0) / embed_dim))
     pos_enc[:, 0::2] = torch.sin(pos * div)
     pos_enc[:, 1::2] = torch.cos(pos * div)
-    return pos_enc.unsqueeze(0)
+    pos_enc = pos_enc.T.unsqueeze(0)
+    return pos_enc
 
 def center_trim(tensor, size):
     delta = tensor.size(-1) - size

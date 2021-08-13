@@ -109,11 +109,11 @@ class AttentionModel(nn.Module):
             in_channels = channels
             channels = 2 * channels
 
-        channels = in_channels
+        self.embed = in_channels
 
-        self.lstm = BLSTM(channels, lstm_layers) if lstm_layers else None
+        self.lstm = BLSTM(self.embed, lstm_layers) if lstm_layers else None
 
-        self.attn = nn.Sequential(*[AttentionLayer(channels, heads) 
+        self.attn = nn.Sequential(*[AttentionLayer(self.embed, heads) 
                                     for _ in range(attn_layers)]) if attn_layers else None
 
         for sub in self.modules():
@@ -163,6 +163,7 @@ class AttentionModel(nn.Module):
         if self.lstm:
             x = self.lstm(x)
         if self.attn:
+            x = x + pos_encoding(self.embed, x.size(-1), x.device)
             x = self.attn(x)
         for decode in self.decoder:
             skip = center_trim(saved.pop(-1), x.size(-1))
