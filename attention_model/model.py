@@ -1,175 +1,81 @@
-# El modelo básico es exactamente igual al de demucs: https://github.com/facebookresearch/demucs
-
 import math
-import julius
 import torch
 import torch.nn as nn
-from utils.stft import STFT
-from attention_model.utils import *
 
-class BLSTM(nn.Module):
-    def __init__(self, hidden_size: int, layers: int) -> None:
-        '''
-        Argumentos:
-            hidden_size -- Cantidad de unidades BLSTM
-            layers -- Cantidad de capas BLSTM
-        '''
-        super(BLSTM, self).__init__()
-        self.lstm = nn.LSTM(hidden_size, hidden_size, layers, batch_first=True, bidirectional=True)
-        self.linear = nn.Linear(2 * hidden_size, hidden_size)
-
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-        '''
-        Argumentos:
-            data -- Tensor de dimensión (batch, hidden_size, timesteps)
-        Retorna:
-            Tensor de dimensión (batch, hidden_size, timesteps)
-        '''
-        data = data.transpose(1, 2) # Dim: (batch, timesteps, hidden_size)
-        data = self.lstm(data)[0] # Dim: (batch, timesteps, 2 * hidden_size)
-        data = self.linear(data) # Dim: (batch, timesteps, hidden_size)
-        data = data.transpose(1, 2) # Dim: (batch, hidden_size, timesteps)
-        return data
-
-class AttentionLayer(nn.Module):
-    def __init__(self, d_model: int, heads: int) -> None:
-        '''
-        Argumentos:
-            d_model -- Tamaño de la dimensión de embedding
-            heads -- Cantidad de heads para MultiheadAttention
-        '''
-        super(AttentionLayer, self).__init__()
-        self.attn = nn.MultiheadAttention(d_model, heads, batch_first=True)
-        self.linear1 = nn.Linear(d_model, 4 * d_model)
-        self.linear2 = nn.Linear(4 * d_model, d_model)
-        self.norm1 = nn.LayerNorm(d_model)
-        self.norm2 = nn.LayerNorm(d_model)
-        self.relu = nn.ReLU()
-
-    def forward(self, data: torch.Tensor) -> torch.Tensor:
-        '''
-        Argumentos:
-            data -- Tensor de dimensión (batch, d_model, timesteps)
-        Retorna:
-            Tensor de dimensión (batch, d_model, timesteps)
-        '''
-        data = data.transpose(1, 2) # Dim: (batch, timesteps, d_model)
-        skip = self.attn(data, data, data)[0]
-        data = data + skip
-        data = self.norm1(data)
-        skip = self.linear2(self.relu(self.linear1(data)))
-        data = data + skip
-        data = self.norm2(data)
-        data = data.transpose(1, 2) # Dim: (batch, d_model, timesteps)
-        return data
+def pos_encoding(embed_dim, length, device):
+    pos_enc = torch.zeros(length, embed_dim, device=device)
+    pos = torch.arange(0, length).unsqueeze(1)
+    div = torch.exp(torch.arange(0, embed_dim, 2).float() * (-math.log(10000.0) / embed_dim))
+    pos_enc[:, 0::2] = torch.sin(pos * div)
+    pos_enc[:, 1::2] = torch.cos(pos * div)
+    return pos_enc.unsqueeze(0)
 
 class AttentionModel(nn.Module):
-    def __init__(self, 
-                 layers: int = 6, 
-                 channels: int = 64, 
-                 lstm_layers: int = 2, 
-                 attn_layers: int = 2, 
-                 heads: int = 4) -> None:
-        '''
-        Argumentos:
-            layers -- Cantidad de capas (encoder/decoder)
-            channels -- Canales de salida del primer encoder
-            lstm_layers -- Cantidad de capas BLSTM
-            attn_layers -- Cantidad de capas de atención
-            heads -- Cantidad de heads de atención múltiple (válido para attn_layers > 0)
-        '''
+    def __init__(self, nfft: int, hop: int) -> None:
         super(AttentionModel, self).__init__()
-        self.layers = layers
-        self.kernel_size = 8
-        self.stride = 4
-        self.context = 3
-        rescale = 0.1
-        in_channels = 2
-
-        self.encoder = nn.ModuleList()
-        self.decoder = nn.ModuleList()
-
-        glu = nn.GLU(dim=1)
-        relu = nn.ReLU()
-        for index in range(layers):
-            encode = [nn.Conv1d(in_channels, channels, self.kernel_size, self.stride), relu,
-                      nn.Conv1d(channels, 2 * channels, 1), glu]
-            self.encoder.append(nn.Sequential(*encode))
-
-            if index > 0:
-                out_channels = in_channels
-            else:
-                out_channels = 2
-
-            decode = [nn.Conv1d(channels, 2 * channels, self.context), glu,
-                      nn.ConvTranspose1d(channels, out_channels, self.kernel_size, self.stride)]
-            if index > 0:
-                decode.append(relu)
-            self.decoder.insert(0, nn.Sequential(*decode))
-            in_channels = channels
-            channels = 2 * channels
-
-        self.embed = in_channels
-
-        self.lstm = BLSTM(self.embed, lstm_layers) if lstm_layers else None
-
-        self.attn = nn.Sequential(*[AttentionLayer(self.embed, heads) 
-                                    for _ in range(attn_layers)]) if attn_layers else None
-
-        for sub in self.modules():
-            if isinstance(sub, (nn.Conv1d, nn.ConvTranspose1d)):
-                std = sub.weight.std().detach()
-                scale = (std / rescale)**0.5
-                sub.weight.data /= scale
-                if sub.bias is not None:
-                    sub.bias.data /= scale
-
-    def calculate_length(self, length: int) -> int:
-        length *= 2
-        for _ in range(self.layers):
-            length = math.ceil((length - self.kernel_size) / self.stride) + 1
-            length = max(1, length)
-            length += self.context - 1
-        for _ in range(self.layers):
-            length = (length - 1) * self.stride + self.kernel_size
-
-        length = math.ceil(length / 2)
-        return int(length)
+        self.nfft = nfft
+        self.hop = hop
+        self.bins = nfft // 2 + 1
+        self.window = nn.Parameter(torch.hann_window(nfft), requires_grad=False)
+        self.mh = nn.MultiheadAttention(embed_dim=2 * self.bins, num_heads=2, batch_first=True)
+        self.linear1_real = nn.Linear(2 * self.bins, 4 * self.bins)
+        self.linear1_imag = nn.Linear(2 * self.bins, 4 * self.bins)
+        self.relu = nn.ReLU()
+        self.linear2_real = nn.Linear(4 * self.bins, 2 * self.bins)
+        self.linear2_imag = nn.Linear(4 * self.bins, 2 * self.bins)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, mix: torch.Tensor) -> torch.Tensor:
         '''
         Argumentos:
-            mix -- Tensor de dimensión (batch, 2, timesteps)
+            mix -- Tensor de dimensión (batch, channels, timesteps)
         Retorna:
-            Tensor de dimensión (batch, 2, timesteps')
+            Tensor de dimensión (batch, channels, timesteps)
         '''
-        if not self.training:
-            target_length = self.calculate_length(mix.size(-1))
-            mix = pad_tensor(mix, target_length)
+        length = mix.size(-1)
 
-        x = mix
+        # Calculo STFT
+        stft = mix.reshape(-1, length) # Dim: (batch * channels, timesteps)
+        stft = torch.stft(stft, n_fft=self.nfft, 
+                          hop_length=self.hop, window=self.window, 
+                          onesided=True, return_complex=True) # Dim: (batch * channels, bins, frames)
+        stft = stft.reshape(-1, 2, self.bins, stft.size(-1)) # Dim: (batch, channels, bins, frames)
+        stft = stft.transpose(1, 3) # Dim: (batch, frames, bins, channels)
+        stft = stft.reshape(stft.size(0), stft.size(1), -1) # Dim: (batch, frames, bins * channels)
 
-        mono = mix.mean(dim=1, keepdim=True)
-        mean = mono.mean(dim=-1, keepdim=True)
-        std = mono.std(dim=-1, keepdim=True)
+        # Parte real e imaginaria
+        real, imag = torch.real(stft), torch.imag(stft)
 
-        x = (x - mean) / (1e-8 + std)
-        x = julius.resample_frac(x, 1, 2)
+        # Positional encoding
+        encoding = pos_encoding(stft.size(-1), stft.size(1), stft.device)
+        del stft
+        real = real + encoding
+        imag = imag + encoding
+
+        # Atención compleja
+        new_real = self.mh(real, real, real)[0] + self.mh(real, imag, imag)[0] - \
+                   self.mh(imag, real, imag)[0] - self.mh(imag, imag, real)[0]
+        new_imag = self.mh(real, real, imag)[0] + self.mh(real, imag, real)[0] + \
+                   self.mh(imag, real, real)[0] - self.mh(imag, imag, imag)[0]
+
+        # Feed Forward complejo
+        new_real, new_imag = self.relu(self.linear1_real(new_real) - self.linear1_imag(new_imag)), \
+                             self.relu(self.linear1_real(new_imag) + self.linear1_imag(new_real))
+        new_real, new_imag = self.linear2_real(new_real) - self.linear2_imag(new_imag), \
+                             self.linear2_real(new_imag) + self.linear2_imag(new_real)
+
+        # Máscara
+        real = real * self.sigmoid(new_real)
+        imag = imag * self.sigmoid(new_imag)
         
-        saved = []
-        for encode in self.encoder:
-            x = encode(x)
-            saved.append(x)
-        if self.lstm:
-            x = self.lstm(x)
-        if self.attn:
-            x = x + pos_encoding(self.embed, x.size(-1), x.device)
-            x = self.attn(x)
-        for decode in self.decoder:
-            skip = center_trim(saved.pop(-1), x.size(-1))
-            x = x + skip
-            x = decode(x)
-        
-        x = julius.resample_frac(x, 2, 1)
-        x = x * std + mean
-        return x
+        # Calculo la STFT inversa
+        stft = real + 1j * imag
+        stft = stft.reshape(-1, stft.size(1), self.bins, 2) # Dim: (batch, frames, bins, channels)
+        stft = stft.transpose(1, 3) # Dim: (batch, channels, bins, frames)
+        stft = stft.reshape(-1, self.bins, stft.size(-1)) # Dim: (batch * channels, bins, frames)
+
+        estim = torch.istft(stft, n_fft=self.nfft, hop_length=self.hop, 
+                            window=self.window, onesided=True, return_complex=False, 
+                            length=length) # Dim: (batch * channels, timesteps)
+        estim = estim.reshape(-1, 2, estim.size(-1))
+        return estim

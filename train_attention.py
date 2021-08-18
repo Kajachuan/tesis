@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
 from attention_model.model import AttentionModel
-from attention_model.utils import center_trim
 
 def train(network, train_loader, device, optimizer):
     batch_loss, count = 0, 0
@@ -19,7 +18,6 @@ def train(network, train_loader, device, optimizer):
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad()
         y_hat = network(x)
-        y = center_trim(y, y_hat.size(-1))
         loss = mse_loss(y_hat, y)
         loss.backward()
         optimizer.step()
@@ -38,7 +36,6 @@ def valid(network, valid_loader, device):
             pbar.set_description("Validando")
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             y_hat = network(x)
-            y_hat = center_trim(y_hat, y.size(-1))
             loss = mse_loss(y_hat, y)
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)
@@ -46,17 +43,15 @@ def valid(network, valid_loader, device):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--attn-layers", type=int, default=2, help="Cantidad de capas de atención")
     parser.add_argument("--batch-size", type=int, default=10, help="Tamaño del batch")
-    parser.add_argument("--channels", type=int, default=64, help="Cantidad de canales de salida del primer encoder")
     parser.add_argument("--checkpoint", type=str, help="Directorio de los checkpoints")
     parser.add_argument("--dataset", type=str, default="musdb", choices=["musdb", "medleydb"], help="Nombre del dataset")
     parser.add_argument("--duration", type=float, default=5.0, help="Duración de cada canción")
-    parser.add_argument("--epochs", type=int, default=10, help="Número de épocas")
-    parser.add_argument("--heads", type=int, default=4, help="Cantidad de heads del Multihead Attention")
+    parser.add_argument("--epochs", type=int, default=10, help="Número de iteraciones")
+    parser.add_argument("--hop", type=int, default=1024, help="Tamaño del hop del STFT")
     parser.add_argument("--layers", type=int, default=5, help="Número de capas")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
-    parser.add_argument("--lstm-layers", type=int, default=2, help="Cantidad de capas BLSTM")
+    parser.add_argument("--nfft", type=int, default=4096, help="Tamaño de la FFT del STFT")
     parser.add_argument("--output", type=str, help="Directorio de salida")
     parser.add_argument("--partitions", type=int, default=1, help="Número de partes de las canciones de validación")
     parser.add_argument("--root", type=str, help="Ruta del dataset")
@@ -73,7 +68,7 @@ def main():
     print("GPU disponible:", use_cuda)
     device = torch.device("cuda:0" if use_cuda else "cpu")
 
-    model_args = [args.layers, args.channels, args.lstm_layers, args.attn_layers, args.heads]
+    model_args = [args.nfft, args.hop]
     network = AttentionModel(*model_args).to(device)
 
     if args.dataset == "musdb":
