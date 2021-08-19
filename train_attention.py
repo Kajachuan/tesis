@@ -9,34 +9,42 @@ from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
 from attention_model.model import AttentionModel
 
-def train(network, train_loader, device, optimizer):
+def train(network, nfft, hop, train_loader, device, optimizer):
     batch_loss, count = 0, 0
     network.train()
     pbar = tqdm.tqdm(train_loader)
+    window = torch.hann_window(nfft)
     for x, y in pbar:
         pbar.set_description("Entrenando batch")
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
         optimizer.zero_grad()
-        y_hat = network(x)
-        loss = mse_loss(y_hat, y)
+        _, stft_hat = network(x)
+        stft = torch.stft(y.reshape(-1, y.size(-1)), n_fft=nfft, 
+                          hop_length=hop, window=window, 
+                          onesided=True, return_complex=True)
+        stft = torch.stack(torch.real(stft), torch.imag(stft), dim=-1)
+        loss = mse_loss(stft_hat, stft)
         loss.backward()
         optimizer.step()
         batch_loss += loss.item() * y.size(0)
         count += y.size(0)
-
-        del x, y, y_hat, loss
     return batch_loss / count
 
-def valid(network, valid_loader, device):
+def valid(network, nfft, hop, valid_loader, device):
     batch_loss, count = 0, 0
     network.eval()
+    window = torch.hann_window(nfft)
     with torch.no_grad():
         pbar = tqdm.tqdm(valid_loader)
         for x, y in pbar:
             pbar.set_description("Validando")
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
-            y_hat = network(x)
-            loss = mse_loss(y_hat, y)
+            _, stft_hat = network(x)
+            stft = torch.stft(y.reshape(-1, y.size(-1)), n_fft=nfft, 
+                          hop_length=hop, window=window, 
+                          onesided=True, return_complex=True)
+            stft = torch.stack(torch.real(stft), torch.imag(stft), dim=-1)
+            loss = mse_loss(stft_hat, stft)
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)
         return batch_loss / count
@@ -109,8 +117,8 @@ def main():
     t = tqdm.trange(initial_epoch, args.epochs + 1)
     for epoch in t:
         t.set_description("Entrenando iteración")
-        train_loss = train(network, train_loader, device, optimizer)
-        valid_loss = valid(network, valid_loader, device)
+        train_loss = train(network, args.nfft, args.hop, train_loader, device, optimizer)
+        valid_loss = valid(network, args.nfft, args.hop, valid_loader, device)
         scheduler.step(valid_loss)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)

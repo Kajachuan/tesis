@@ -48,7 +48,6 @@ class AttentionModel(nn.Module):
 
         # Positional encoding
         encoding = pos_encoding(stft.size(-1), stft.size(1), stft.device)
-        del stft
         real = real + encoding
         imag = imag + encoding
 
@@ -78,4 +77,4 @@ class AttentionModel(nn.Module):
                             window=self.window, onesided=True, return_complex=False, 
                             length=length) # Dim: (batch * channels, timesteps)
         estim = estim.reshape(-1, 2, estim.size(-1))
-        return estim
+        return estim, torch.stack(torch.real(stft), torch.imag(stft), dim=-1)
