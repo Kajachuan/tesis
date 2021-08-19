@@ -13,7 +13,7 @@ def train(network, nfft, hop, train_loader, device, optimizer):
     batch_loss, count = 0, 0
     network.train()
     pbar = tqdm.tqdm(train_loader)
-    window = torch.hann_window(nfft)
+    window = torch.hann_window(nfft, device=device)
     for x, y in pbar:
         pbar.set_description("Entrenando batch")
         x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
@@ -33,7 +33,7 @@ def train(network, nfft, hop, train_loader, device, optimizer):
 def valid(network, nfft, hop, valid_loader, device):
     batch_loss, count = 0, 0
     network.eval()
-    window = torch.hann_window(nfft)
+    window = torch.hann_window(nfft, device=device)
     with torch.no_grad():
         pbar = tqdm.tqdm(valid_loader)
         for x, y in pbar:
