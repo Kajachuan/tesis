@@ -22,7 +22,7 @@ def train(network, nfft, hop, train_loader, device, optimizer):
         stft = torch.stft(y.reshape(-1, y.size(-1)), n_fft=nfft, 
                           hop_length=hop, window=window, 
                           onesided=True, return_complex=True)
-        stft = torch.stack(torch.real(stft), torch.imag(stft), dim=-1)
+        stft = torch.stack((torch.real(stft), torch.imag(stft)), dim=-1)
         loss = mse_loss(stft_hat, stft)
         loss.backward()
         optimizer.step()
@@ -43,7 +43,7 @@ def valid(network, nfft, hop, valid_loader, device):
             stft = torch.stft(y.reshape(-1, y.size(-1)), n_fft=nfft, 
                           hop_length=hop, window=window, 
                           onesided=True, return_complex=True)
-            stft = torch.stack(torch.real(stft), torch.imag(stft), dim=-1)
+            stft = torch.stack((torch.real(stft), torch.imag(stft)), dim=-1)
             loss = mse_loss(stft_hat, stft)
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)

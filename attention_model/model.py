@@ -77,4 +77,4 @@ class AttentionModel(nn.Module):
                             window=self.window, onesided=True, return_complex=False, 
                             length=length) # Dim: (batch * channels, timesteps)
         estim = estim.reshape(-1, 2, estim.size(-1))
-        return estim, torch.stack(torch.real(stft), torch.imag(stft), dim=-1)
+        return estim, torch.stack((torch.real(stft), torch.imag(stft)), dim=-1)
