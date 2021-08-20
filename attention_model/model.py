@@ -16,13 +16,28 @@ class AttentionModel(nn.Module):
         self.nfft = nfft
         self.hop = hop
         self.bins = nfft // 2 + 1
+
+        dropout = 0.3
+        d_model = 2 * self.bins
+
         self.window = nn.Parameter(torch.hann_window(nfft), requires_grad=False)
-        self.mh = nn.MultiheadAttention(embed_dim=2 * self.bins, num_heads=2, batch_first=True)
-        self.linear1_real = nn.Linear(2 * self.bins, 4 * self.bins)
-        self.linear1_imag = nn.Linear(2 * self.bins, 4 * self.bins)
+        self.mh = nn.MultiheadAttention(embed_dim=d_model, num_heads=2, 
+                                        dropout=dropout, batch_first=True)
+        self.linear1_real = nn.Linear(d_model, 4 * d_model)
+        self.linear1_imag = nn.Linear(d_model, 4 * d_model)
+        self.linear2_real = nn.Linear(4 * d_model, d_model)
+        self.linear2_imag = nn.Linear(4 * d_model, d_model)
+        self.norm1_real = nn.LayerNorm(d_model)
+        self.norm1_imag = nn.LayerNorm(d_model)
+        self.norm2_real = nn.LayerNorm(d_model)
+        self.norm2_imag = nn.LayerNorm(d_model)
+        self.dropout1_real = nn.Dropout(dropout)
+        self.dropout1_imag = nn.Dropout(dropout)
+        self.dropout2_real = nn.Dropout(dropout)
+        self.dropout2_imag = nn.Dropout(dropout)
+        self.dropout3_real = nn.Dropout(dropout)
+        self.dropout3_imag = nn.Dropout(dropout)
         self.relu = nn.ReLU()
-        self.linear2_real = nn.Linear(4 * self.bins, 2 * self.bins)
-        self.linear2_imag = nn.Linear(4 * self.bins, 2 * self.bins)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, mix: torch.Tensor) -> torch.Tensor:
@@ -57,11 +72,20 @@ class AttentionModel(nn.Module):
         new_imag = self.mh(real, real, imag)[0] + self.mh(real, imag, real)[0] + \
                    self.mh(imag, real, real)[0] - self.mh(imag, imag, imag)[0]
 
+        # Sumo con la entrada
+        new_real = self.norm1_real(real + self.dropout1_real(new_real))
+        new_imag = self.norm1_imag(imag + self.dropout1_imag(new_imag))
+
         # Feed Forward complejo
-        new_real, new_imag = self.relu(self.linear1_real(new_real) - self.linear1_imag(new_imag)), \
-                             self.relu(self.linear1_real(new_imag) + self.linear1_imag(new_real))
-        new_real, new_imag = self.linear2_real(new_real) - self.linear2_imag(new_imag), \
-                             self.linear2_real(new_imag) + self.linear2_imag(new_real)
+        other_real, other_imag = self.dropout2_real(self.relu(self.linear1_real(new_real) - \
+                                                              self.linear1_imag(new_imag))), \
+                                 self.dropout2_imag(self.relu(self.linear1_real(new_imag) + \
+                                                              self.linear1_imag(new_real)))
+        new_real, new_imag = new_real + self.dropout3_real(self.linear2_real(other_real) - \
+                                                           self.linear2_imag(other_imag)), \
+                             new_imag + self.dropout3_imag(self.linear2_real(other_imag) + \
+                                                           self.linear2_imag(other_real))
+        new_real, new_imag = self.norm2_real(new_real), self.norm2_imag(new_imag)
 
         # Máscara
         real = real * self.sigmoid(new_real)
