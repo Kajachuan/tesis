@@ -80,7 +80,7 @@ class AttentionModel(nn.Module):
 
         dropout = 0.3
         heads = 2
-        d_model = 4 * self.bins
+        d_model = heads * self.bins
 
         self.window = nn.Parameter(torch.hann_window(nfft), requires_grad=False)
         self.attn = ComplexMultiheadAttention(embed_dim=d_model, num_heads=heads, 
