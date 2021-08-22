@@ -79,14 +79,15 @@ class AttentionModel(nn.Module):
         self.bins = nfft // 2 + 1
 
         dropout = 0.3
+        heads = 2
         d_model = 4 * self.bins
 
         self.window = nn.Parameter(torch.hann_window(nfft), requires_grad=False)
-        self.attn = ComplexMultiheadAttention(embed_dim=d_model, num_heads=4, 
+        self.attn = ComplexMultiheadAttention(embed_dim=d_model, num_heads=heads, 
                                               dropout=dropout, batch_first=True)
-        self.conv1 = ComplexConv2d(in_channels=2, out_channels=4,
+        self.conv1 = ComplexConv2d(in_channels=2, out_channels=heads,
                                    kernel_size=1, groups=2)
-        self.conv2 = ComplexConv2d(in_channels=4, out_channels=2,
+        self.conv2 = ComplexConv2d(in_channels=heads, out_channels=2,
                                    kernel_size=1, groups=2)
         self.linear1 = ComplexLinear(d_model, 4 * d_model)
         self.linear2 = ComplexLinear(4 * d_model, d_model)
