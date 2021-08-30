@@ -46,8 +46,8 @@ def main():
 
     subparsers = parser.add_subparsers(help="Tipo de modelo", dest="model")
     parser_spec = subparsers.add_parser("spectrogram", help="Modelo de espectrograma")
-
     parser_wave = subparsers.add_parser("wave", help="Modelo de wave")
+    parser_attn = subparsers.add_parser("attention", help="Modelo de atención")
 
     parser_blend = subparsers.add_parser("blend", help="Modelo de mezcla")
     parser_blend.add_argument("--checkpoints-stft", type=str, help="Ruta del modelo de espectrograma")
@@ -62,6 +62,8 @@ def main():
         separator = SpectrogramSeparator(args.checkpoints, args.other, args.vocals, device)
     elif args.model == "wave":
         separator = WaveSeparator(args.checkpoints, args.other, args.vocals, device)
+    elif args.model == "attention":
+        separator = AttentionSeparator(args.checkpoints, args.other, args.vocals, device)
     elif args.model == "blend":
         separator = BlendSeparator(args.checkpoints_stft, args.checkpoints_wave,
                                    args.checkpoints, args.other, args.vocals, device)

@@ -2,9 +2,10 @@ import torch
 from torch.nn import Module
 from typing import Dict, List
 from numpy import ndarray
-from spectrogram_model.model import SpectrogramModel
-from wave_model.model import WaveModel
 from blend_net.blend import BlendNet
+from wave_model.model import WaveModel
+from attention_model.model import AttentionModel
+from spectrogram_model.model import SpectrogramModel
 
 class Separator:
     def __init__(self, root: str, use_other: bool, use_vocals: bool, device: torch.device) -> None:
@@ -72,6 +73,14 @@ class WaveSeparator(Separator):
 
     def eval_model(self, stem: str, track: torch.Tensor) -> torch.Tensor:
         return self.models[stem](track.unsqueeze(0))[0, ...]
+
+class AttentionSeparator(Separator):
+    def set_model(self, stem: str, args: List[str]) -> None:
+        self.models[stem] = AttentionModel(*args).to(self.device)
+
+    def eval_model(self, stem: str, track: torch.Tensor) -> torch.Tensor:
+        estim, _ = self.models[stem](track.unsqueeze(0))[0, ...]
+        return estim
 
 class BlendSeparator:
     def __init__(self, stft_root: str, wave_root: str, root: str, use_other: bool,
