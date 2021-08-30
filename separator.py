@@ -79,8 +79,8 @@ class AttentionSeparator(Separator):
         self.models[stem] = AttentionModel(*args).to(self.device)
 
     def eval_model(self, stem: str, track: torch.Tensor) -> torch.Tensor:
-        estim, _ = self.models[stem](track.unsqueeze(0))[0, ...]
-        return estim
+        estim, _ = self.models[stem](track.unsqueeze(0))
+        return estim[0, ...]
 
 class BlendSeparator:
     def __init__(self, stft_root: str, wave_root: str, root: str, use_other: bool,
