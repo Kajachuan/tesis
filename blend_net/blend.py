@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 from utils.stft import STFT
-from spectrogram_model.model import SpectrogramModel
-from wave_model.model import WaveModel
 
 class STFTConvLayer(nn.Module):
     def __init__(self, features: int, in_channels: int, out_channels: int = -1) -> None:
