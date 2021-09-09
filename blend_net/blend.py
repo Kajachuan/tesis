@@ -13,17 +13,15 @@ class STFTConvLayer(nn.Module):
             out_channels -- Número de canales de salida
         """
         super(STFTConvLayer, self).__init__()
-        self.features = features
-        self.in_channels = in_channels
-        self.out_channels = out_channels
         if out_channels == -1:
-            self.out_channels = 2 * self.in_channels
-        self.conv = nn.Conv2d(in_channels=self.in_channels,
-                              out_channels=self.out_channels,
+            out_channels = 2 * in_channels
+        self.out_channels = out_channels
+        self.conv = nn.Conv2d(in_channels=in_channels,
+                              out_channels=out_channels,
                               kernel_size=3,
                               padding=(0,1))
         self.pool = nn.MaxPool2d(kernel_size=(2, 1))
-        self.batch_norm = nn.BatchNorm1d((self.features - 2) // 2)
+        self.batch_norm = nn.BatchNorm1d((features - 2) // 2)
         self.relu = nn.LeakyReLU()
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -52,15 +50,13 @@ class WaveConvLayer(nn.Module):
             out_channels -- Número de canales de salida
         """
         super(WaveConvLayer, self).__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
         if out_channels == -1:
-            self.out_channels = 2 * self.in_channels
-        self.conv = nn.Conv1d(in_channels=self.in_channels,
-                              out_channels=self.out_channels,
+            out_channels = 2 * in_channels
+        self.conv = nn.Conv1d(in_channels=in_channels,
+                              out_channels=out_channels,
                               kernel_size=3,
                               padding=1)
-        self.batch_norm = nn.BatchNorm1d(self.out_channels)
+        self.batch_norm = nn.BatchNorm1d(out_channels)
         self.relu = nn.LeakyReLU()
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -80,7 +76,7 @@ class BlendNet(nn.Module):
     """
     Modelo de mezcla de modelos de espectrograma y wave
     """
-    def __init__(self, layers: int, channels: int, nfft: int, hop: int, activation: str) -> None:
+    def __init__(self, blend: int, layers: int, channels: int, nfft: int, hop: int) -> None:
         """
         Argumentos:
             layers -- Número de capas
@@ -90,75 +86,76 @@ class BlendNet(nn.Module):
             activation -- Función de activación a utilizar
         """
         super(BlendNet, self).__init__()
-        self.layers = layers
+        self.blend = blend
         self.channels = channels
-        self.nfft = nfft
         self.bins = self.nfft // 2 + 1
-        self.hop = hop
-        blend = 2
 
-        self.stft = STFT(self.nfft, self.hop)
+        self.stft = STFT(nfft, hop)
 
-        self.conv_stft = nn.Sequential(*([STFTConvLayer(features=self.bins, in_channels=blend * self.channels, out_channels=8)] +
+        self.conv_stft = nn.Sequential(*([STFTConvLayer(features=self.bins, in_channels=blend * channels, out_channels=8)] +
                                          [STFTConvLayer(features=(self.bins - (2**i - 2)) // 2**(i-1), in_channels=2**(i+1))
-                                          for i in range(2, self.layers + 1)]))
+                                          for i in range(2, layers + 1)]))
 
-        self.linear_stft = nn.Linear(in_features=(self.bins - (2**(self.layers+1) - 2)) // 2**(self.layers) * 2**(self.layers+2),
-                                     out_features=blend * self.bins * self.channels)
+        self.linear_stft = nn.Linear(in_features=(self.bins - (2**(layers+1) - 2)) // 2**(layers) * 2**(layers+2),
+                                     out_features=blend * self.bins * channels)
 
-        self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * self.channels, out_channels=8)] +
-                                         [WaveConvLayer(in_channels=2**(i+1)) for i in range(2, self.layers + 1)]))
+        self.conv_wave = nn.Sequential(*([WaveConvLayer(in_channels=(blend+1) * channels, out_channels=8)] +
+                                         [WaveConvLayer(in_channels=2**(i+1)) for i in range(2, layers + 1)]))
 
-        self.linear_wave = nn.Linear(in_features=2**(self.layers + 2), out_features=(blend + 1) * self.channels)
+        self.linear_wave = nn.Linear(in_features=2**(layers + 2), out_features=(blend + 1) * channels)
 
-        if activation == "sigmoid":
-            self.activation = nn.Sigmoid()
-        elif activation == "tanh":
-            self.activation = nn.Tanh()
-        else:
-            raise NotImplementedError
+        self.activation = nn.Tanh()
 
-    def forward(self, wave_stft: torch.Tensor, wave: torch.Tensor) -> torch.Tensor:
+    def forward(self, *args) -> torch.Tensor:
         """
         Argumentos:
-            wave_stft -- Audio del modelo de STFT de dimensión (n_batch, n_channels, timesteps)
-            wave -- Audio del modelo de Wave de dimensión (n_batch, n_channels, timesteps)
+            *args -- Tensores a mezclar
 
         Retorna:
             Separación de dimensión (n_batch, n_channels, timesteps)
         """
+        assert len(args) == self.blend
+
         # Mezcla con STFT
-        stft_stft = self.stft(wave_stft)
-        mag_stft, phase_stft = stft_stft[..., 0], stft_stft[..., 1]
+        mag, phase = [], []
+        for tensor in args:
+            stft = self.stft(tensor)
+            mag.append(stft[..., 0])
+            phase.append(stft[..., 1])
 
-        stft_wave = self.stft(wave)
-        mag_wave, phase_wave = stft_wave[..., 0], stft_wave[..., 1]
+        data = torch.stack(mag, dim=1) # Dim = (batch, blend, channels, bins, frames)
+        data = 10 * torch.log10(torch.clamp(data, min=1e-8))
+        data = data.reshape(data.size(0), -1, data.size(-2), data.size(-1)) # Dim = (batch, blend * channels, bins, frames)
+        data = self.conv_stft(data) # Dim = (batch, out_channels, bins_out, frames)
+        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (batch, out_channels * bins_out, frames)
+        data = data.transpose(1, 2) # Dim = (batch, frames, out_channels * bins_out)
+        data = self.linear_stft(data) # Dim = (batch, frames, blend * bins * channels)
+        data = data.reshape(data.size(0), data.size(1), self.bins, self.channels, -1) # Dim = (batch, frames, bins, channels, blend)
+        data = data.transpose(1, 3) # Dim = (batch, channels, bins, frames, blend)
+        data = self.activation(data) # Dim = (batch, channels, bins, frames, blend)
 
-        data = torch.stack((mag_stft, mag_wave), dim=1) # Dim = (n_batch, 2, n_channels, n_bins, n_frames)
-        data = 10 * torch.log10(torch.clamp(data, min=1e-8)) # Dim = (n_batch, 2, n_channels, n_bins, n_frames)
-        data = data.reshape(data.size(0), -1, data.size(-2), data.size(-1)) # Dim = (n_batch, 2 * n_channels, n_bins, n_frames)
-        data = self.conv_stft(data) # Dim = (n_batch, 128, bins_out, n_frames)
-        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 128 * bins_out, n_frames)
-        data = data.transpose(1, 2) # Dim = (n_batch, n_frames, 128 * bins_out)
-        data = self.linear_stft(data) # Dim = (n_batch, n_frames, 2 * n_bins * n_channels)
-        data = data.reshape(data.size(0), data.size(1), self.bins, self.channels, -1) # Dim = (n_batch, n_frames, n_bins, n_channels, 2)
-        data = data.transpose(1, 3) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
-        data = self.activation(data) # Dim = (n_batch, n_channels, n_bins, n_frames, 2)
+        real = data[..., 0] * mag[0] * torch.cos(phase[0]) 
+        imag = data[..., 0] * mag[0] * torch.sin(phase[0])
+        for i in range(1, self.blend):
+            real += data[..., i] * mag[i] * torch.cos(phase[i])
+            imag += data[..., i] * mag[i] * torch.sin(phase[i])
 
-        estim_stft = torch.stack((data[..., 0] * (mag_stft * torch.cos(phase_stft)) +
-                                  data[..., 1] * (mag_wave * torch.cos(phase_wave)),
-                                  data[..., 0] * (mag_stft * torch.sin(phase_stft)) +
-                                  data[..., 1] * (mag_wave * torch.sin(phase_wave))), dim=-1)
+        estim_stft = torch.stack((real, imag), dim=-1)
         blend_stft = self.stft(estim_stft, inverse=True)
 
         # Mezcla con Wave
-        data = torch.stack([wave_stft, wave, blend_stft], dim=1) # Dim = (n_batch, 3, n_channels, timesteps)
-        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (n_batch, 3 * n_channels, timesteps)
-        data = self.conv_wave(data) # Dim = (n_batch, 128, timesteps)
-        data = data.transpose(1, 2) # Dim = (n_batch, timesteps, 128)
-        data = self.linear_wave(data) # Dim = (n_batch, timesteps, n_channels * 3)
-        data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (n_batch, timesteps, n_channels, 3)
-        data = data.transpose(1, 2) # Dim = (n_batch, n_channels, timesteps, 3)
-        data = self.activation(data) # Dim = (n_batch, timesteps, n_channels, 3)
-        data = data[..., 0] * wave_stft + data[..., 1] * wave + data[..., 2] * blend_stft
-        return data
+        args = list(args) + [blend_stft]
+        data = torch.stack(args, dim=1) # Dim = (batch, blend + 1, channels, timesteps)
+        data = data.reshape(data.size(0), -1, data.size(-1)) # Dim = (batch, (blend + 1) * channels, timesteps)
+        data = self.conv_wave(data) # Dim = (batch, channels_out, timesteps)
+        data = data.transpose(1, 2) # Dim = (batch, timesteps, channels_out)
+        data = self.linear_wave(data) # Dim = (batch, timesteps, channels * (blend + 1))
+        data = data.reshape(data.size(0), data.size(1), self.channels, -1) # Dim = (batch, timesteps, channels, blend + 1)
+        data = data.transpose(1, 2) # Dim = (batch, channels, timesteps, blend + 1)
+        data = self.activation(data) # Dim = (batch, timesteps, channels, blend + 1)
+
+        sum = data[..., 0] * args[0]
+        for i in range(i, self.blend):
+            sum += data[..., i] * args[i]
+
+        return sum

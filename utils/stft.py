@@ -57,8 +57,8 @@ class STFT(nn.Module):
 
             # Calculo la ISTFT
             data = torch.istft(data, n_fft=self.n_fft, hop_length=self.hop,
-                               center=True, normalized=False, onesided=True,
-                               return_complex=False, length=self.length)
+                               window=self.window, center=True, normalized=False,
+                               onesided=True, return_complex=False, length=self.length)
                    # Dim: (n_batch * n_channels, n_timesteps)
             data = data.reshape(n_batch, n_channels, -1) # Dim: (n_batch, n_channels, n_timesteps)
             return data

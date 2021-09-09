@@ -7,11 +7,12 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from dataset.dataset import MUSDB18Dataset
-from spectrogram_model.model import SpectrogramModel
-from wave_model.model import WaveModel
 from blend_net.blend import BlendNet
+from wave_model.model import WaveModel
+from attention_model.model import AttentionModel
+from spectrogram_model.model import SpectrogramModel
 
-def train(network, train_loader, device, stft_model, wave_model, optimizer):
+def train(network, train_loader, device, attn_model, stft_model, wave_model, optimizer):
     batch_loss, count = 0, 0
     network.train()
     pbar = tqdm.tqdm(train_loader)
@@ -21,10 +22,18 @@ def train(network, train_loader, device, stft_model, wave_model, optimizer):
         optimizer.zero_grad()
 
         with torch.no_grad():
-            _, _, wave_stft = stft_model(x)
-            wave = wave_model(x)
+            args = []
+            if attn_model is not None:
+                wave_attn, _ = attn_model(x)
+                args.append(wave_attn)
+            if wave_model is not None:
+                wave = wave_model(x)
+                args.append(wave)
+            if stft_model is not None:
+                _, _, wave_stft = stft_model(x)
+                args.append(wave_stft)
 
-        y_hat = network(wave_stft, wave)
+        y_hat = network(*args)
         loss = mse_loss(y_hat, y)
         loss.backward()
         optimizer.step()
@@ -32,7 +41,7 @@ def train(network, train_loader, device, stft_model, wave_model, optimizer):
         count += y.size(0)
     return batch_loss / count
 
-def valid(network, valid_loader, device, stft_model, wave_model):
+def valid(network, valid_loader, device, attn_model, stft_model, wave_model):
     batch_loss, count = 0, 0
     network.eval()
     with torch.no_grad():
@@ -41,10 +50,18 @@ def valid(network, valid_loader, device, stft_model, wave_model):
             pbar.set_description("Validando")
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
 
-            _, _, wave_stft = stft_model(x)
-            wave = wave_model(x)
-            y_hat = network(wave_stft, wave)
+            args = []
+            if attn_model is not None:
+                wave_attn, _ = attn_model(x)
+                args.append(wave_attn)
+            if wave_model is not None:
+                wave = wave_model(x)
+                args.append(wave)
+            if stft_model is not None:
+                _, _, wave_stft = stft_model(x)
+                args.append(wave_stft)
 
+            y_hat = network(*args)
             loss = mse_loss(y_hat, y)
             batch_loss += loss.item() * y.size(0)
             count += y.size(0)
@@ -52,7 +69,6 @@ def valid(network, valid_loader, device, stft_model, wave_model):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--activation", type=str, choices=["sigmoid", "tanh"], help="Función de activación")
     parser.add_argument("--batch-size", type=int, default=10, help="Tamaño del batch")
     parser.add_argument("--channels", type=int, default=2, help="Número de canales de audio")
     parser.add_argument("--checkpoint", type=str, help="Directorio de los checkpoints")
@@ -63,6 +79,7 @@ def main():
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Tasa de aprendizaje")
     parser.add_argument("--output", type=str, help="Directorio de salida")
     parser.add_argument("--partitions", type=int, default=1, help="Número de partes de las canciones de validación")
+    parser.add_argument("--path-attn", type=str, help="Ruta del modelo de atención")
     parser.add_argument("--path-stft", type=str, help="Ruta del modelo de STFT")
     parser.add_argument("--path-wave", type=str, help="Ruta del modelo de Wave")
     parser.add_argument("--root", type=str, help="Ruta del dataset")
@@ -78,24 +95,45 @@ def main():
     use_cuda = torch.cuda.is_available()
     print("GPU disponible:", use_cuda)
     device = torch.device("cuda:0" if use_cuda else "cpu")
+    blend = 0
+    
+    if args.path_attn is None:
+        attn_model = None
+    else:
+        print("Cargando modelo de atención")
+        state = torch.load(f"{args.path_attn}/{args.target}/best_checkpoint", map_location=device)
+        attn_model = AttentionModel(*state["args"]).to(device)
+        attn_model.load_state_dict(state["state_dict"])
+        attn_model.eval()
+        for param in attn_model.parameters():
+            param.requires_grad = False
+        blend += 1
 
-    print("Cargando modelo de STFT")
-    stft_state = torch.load(f"{args.path_stft}/{args.target}/best_checkpoint", map_location=device)
-    stft_model = SpectrogramModel(*stft_state["args"]).to(device)
-    stft_model.load_state_dict(stft_state["state_dict"])
-    stft_model.eval()
-    for param in stft_model.parameters():
-        param.requires_grad = False
+    if args.path_wave is None:
+        wave_model = None
+    else:
+        print("Cargando modelo de Wave")
+        state = torch.load(f"{args.path_wave}/{args.target}/best_checkpoint", map_location=device)
+        wave_model = WaveModel(*state["args"]).to(device)
+        wave_model.load_state_dict(state["state_dict"])
+        wave_model.eval()
+        for param in wave_model.parameters():
+            param.requires_grad = False
+        blend += 1
 
-    print("Cargando modelo de Wave")
-    wave_state = torch.load(f"{args.path_wave}/{args.target}/best_checkpoint", map_location=device)
-    wave_model = WaveModel(*wave_state["args"]).to(device)
-    wave_model.load_state_dict(wave_state["state_dict"])
-    wave_model.eval()
-    for param in wave_model.parameters():
-        param.requires_grad = False
+    if args.path_stft is None:
+        stft_model = None
+    else:
+        print("Cargando modelo de STFT")
+        state = torch.load(f"{args.path_stft}/{args.target}/best_checkpoint", map_location=device)
+        stft_model = SpectrogramModel(*state["args"]).to(device)
+        stft_model.load_state_dict(state["state_dict"])
+        stft_model.eval()
+        for param in stft_model.parameters():
+            param.requires_grad = False
+        blend += 1
 
-    model_args = [args.layers, stft_state["args"][0], stft_state["args"][-2], stft_state["args"][-1], args.activation]
+    model_args = [blend, args.layers, args.channels, state["args"][-2], state["args"][-1]]
     network = BlendNet(*model_args).to(device)
 
     if args.dataset == "musdb":
@@ -136,8 +174,8 @@ def main():
     t = tqdm.trange(initial_epoch, args.epochs + 1)
     for epoch in t:
         t.set_description("Entrenando iteración")
-        train_loss = train(network, train_loader, device, stft_model, wave_model, optimizer)
-        valid_loss = valid(network, valid_loader, device, stft_model, wave_model)
+        train_loss = train(network, train_loader, device, attn_model, stft_model, wave_model, optimizer)
+        valid_loss = valid(network, valid_loader, device, attn_model, stft_model, wave_model)
         scheduler.step(valid_loss)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
