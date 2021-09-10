@@ -86,7 +86,7 @@ class BlendNet(nn.Module):
         super(BlendNet, self).__init__()
         self.blend = blend
         self.channels = channels
-        self.bins = self.nfft // 2 + 1
+        self.bins = nfft // 2 + 1
 
         self.stft = STFT(nfft, hop)
 
