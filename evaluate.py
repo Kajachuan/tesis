@@ -5,6 +5,7 @@ import museval
 import os
 import torch
 import tqdm
+from math import ceil
 from separator import *
 
 def merge_jsons(out_dir: str, track_name: str, partitions: int) -> None:
@@ -40,8 +41,8 @@ def main():
     parser.add_argument("--init", type=int, default=0, choices=range(50), help="Índice de la canción de inicio")
     parser.add_argument("--other", action="store_true", help="Utilizar el modelo de other")
     parser.add_argument("--output", type=str, help="Ruta donde se guarda la evaluación")
-    parser.add_argument("--partitions", type=int, default=1, help="Número de partes de las canciones de test")
     parser.add_argument("--root", type=str, help="Ruta del dataset")
+    parser.add_argument("--seconds", type=int, default=60, help="Segundos de cada partición")
     parser.add_argument("--vocals", action="store_true", help="Restar vocals para calcular el acompañamiento")
 
     subparsers = parser.add_subparsers(help="Tipo de modelo", dest="model")
@@ -82,27 +83,29 @@ def main():
         track = mus.tracks[i]
         print(f"Canción {i}: {track.name}")
 
-        chunk = track.duration // args.partitions
-        for i in range(1, args.partitions):
-            print(f"Partición {i}")
-            track.chunk_start = ((i - 1) % args.partitions) * chunk
-            track.chunk_duration = chunk
+        partitions = ceil(track.duration / args.seconds)
+        print(f"{partitions} particiones")
+
+        for i in range(1, partitions):
+            print(f"Partición {i}: {args.seconds} segundos")
+            track.chunk_start = ((i - 1) % partitions) * args.seconds
+            track.chunk_duration = args.seconds
             signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
             result = separator.separate(signal)
             museval.eval_mus_track(track, result, f"{args.output}{i}")
 
-        print(f"Partición {args.partitions}")
-        track.chunk_start = (args.partitions - 1) * chunk
+        track.chunk_start = (partitions - 1) * args.seconds
         track.chunk_duration = track.duration - track.chunk_start
+        print(f"Partición {partitions}: {track.chunk_duration} segundos")
         signal = torch.as_tensor(track.audio.T, dtype=torch.float32).to(device)
         result = separator.separate(signal)
-        museval.eval_mus_track(track, result, f"{args.output}{args.partitions}")
+        museval.eval_mus_track(track, result, f"{args.output}{partitions}")
 
-        merge_jsons(args.output, track.name, args.partitions)
+        merge_jsons(args.output, track.name, partitions)
 
-    for i in range(1, args.partitions + 1):
-        os.rmdir(f"{args.output}{i}/test")
-        os.rmdir(f"{args.output}{i}")
+        for i in range(1, partitions + 1):
+            os.rmdir(f"{args.output}{i}/test")
+            os.rmdir(f"{args.output}{i}")
 
 if __name__ == '__main__':
     main()
