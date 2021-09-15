@@ -50,8 +50,9 @@ def main():
     parser_attn = subparsers.add_parser("attention", help="Modelo de atención")
 
     parser_blend = subparsers.add_parser("blend", help="Modelo de mezcla")
-    parser_blend.add_argument("--checkpoints-stft", type=str, help="Ruta del modelo de espectrograma")
+    parser_blend.add_argument("--checkpoints-attn", type=str, help="Ruta del modelo de atención")
     parser_blend.add_argument("--checkpoints-wave", type=str, help="Ruta del modelo de wave")
+    parser_blend.add_argument("--checkpoints-stft", type=str, help="Ruta del modelo de espectrograma")
     args = parser.parse_args()
 
     use_cuda = torch.cuda.is_available()
@@ -65,8 +66,10 @@ def main():
     elif args.model == "attention":
         separator = AttentionSeparator(args.checkpoints, args.other, args.vocals, device)
     elif args.model == "blend":
-        separator = BlendSeparator(args.checkpoints_stft, args.checkpoints_wave,
-                                   args.checkpoints, args.other, args.vocals, device)
+        separator = BlendSeparator(args.checkpoints_attn, args.checkpoints_wave, 
+                                   args.checkpoints_stft, root=args.checkpoints, 
+                                   use_other=args.other, use_vocals=args.vocals, 
+                                   device=device)
     else:
         raise NotImplementedError
 
