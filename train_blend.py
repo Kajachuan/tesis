@@ -133,7 +133,9 @@ def main():
             param.requires_grad = False
         blend += 1
 
-    model_args = [blend, args.layers, args.channels, state["args"][-2], state["args"][-1]]
+    nfft = 4096
+    hop = 1024
+    model_args = [blend, args.layers, args.channels, nfft, hop]
     network = BlendNet(*model_args).to(device)
 
     if args.dataset == "musdb":
