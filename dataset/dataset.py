@@ -1,6 +1,9 @@
 import musdb
+import os
 import random
+import yaml
 import torch
+import torchaudio
 import numpy as np
 from torch.utils.data import Dataset
 from typing import Optional, Tuple
@@ -75,3 +78,102 @@ class MUSDB18Dataset(Dataset):
 
     def __len__(self) -> int:
         return len(self.mus) * self.samples * self.partitions
+
+class MedleyDBDataset(Dataset):
+    """
+    Dataset MedleyDB
+
+    La estructura del directorio debe ser:
+
+    - MedleyDB
+        - stems
+            - track1
+                - stem1.wav
+                - stem2.wav
+                - ...
+            - ...
+        - mixes
+            - track1.wav
+            - track2.wav
+        - config.yaml
+    """
+    def __init__(self, base_path: str, split: str, target: str, duration: Optional[float],
+                 samples: int = 1, partitions: int = 1) -> None:
+        """
+        base_path -- Ruta del dataset
+        split -- División del entrenamiento: 'train' o 'valid' cuando subset='train'
+        target -- Instrumento que se va a separar 'vocals', 'drums', 'bass' o 'vocal'
+        duration -- Duración de cada canción en segundos
+        samples -- Cantidad de muestras de cada cancion
+        partitions -- Cantidad de particiones de las canciones de validación
+        """
+        super(MedleyDBDataset, self).__init__()
+        torchaudio.set_audio_backend('soundfile')
+        self.sample_rate = 44100
+        self.base_path = base_path
+        self.split = split
+        self.target = target
+        self.duration = int(duration * self.sample_rate) if duration else None
+        self.samples = samples
+        self.partitions = partitions
+
+        with open(f'{base_path}/config.yaml') as f:
+            config = yaml.load(f)
+
+        self.track_names = config[target][split]
+
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        if self.split == 'train':
+            track_name = self.track_names[index // self.samples]
+            target_wav = f'{self.target}.wav'
+
+            min = 0.25
+            max = 1.25
+
+            mix, _ = torchaudio.load(f'{self.base_path}/stems/{track_name}/{target_wav}')
+            source = mix.detach().clone()
+
+            start = random.randrange(0, mix.size(1) - self.duration)
+            mix = mix[:, start:start + self.duration]
+            source = source[:, start:start + self.duration]
+
+            vol = (max - min) * torch.rand(mix.size(0), 1) + min
+            mix *= vol
+            source *= vol
+
+            if random.random() < 0.5:
+                mix = torch.flipud(mix)
+                source = torch.flipud(source)
+
+            for wav in os.listdir(f'{self.base_path}/stems/{track_name}'):
+                if wav == target_wav:
+                    continue
+
+                current, _ = torchaudio.load(f'{self.base_path}/stems/{track_name}/{wav}')
+                start = random.randrange(0, current.size(1) - self.duration)
+                current = current[:, start:start + self.duration]
+
+                vol = (max - min) * torch.rand(mix.size(0), 1) + min
+                current *= vol
+
+                if random.random() < 0.5:
+                    current = torch.flipud(current)
+                mix += current
+        else:
+            track_name = self.track_names[index // self.partitions]
+            mix, _ = torchaudio.load(f'{self.base_path}/mixes/{track_name}.wav')
+            source, _ = torchaudio.load(f'{self.base_path}/stems/{track_name}/{self.target}.wav')
+
+            chunk = mix.size(1) // self.partitions
+            chunk_start = (index % self.partitions) * chunk
+            if (index + 1) % self.partitions == 0:
+                chunk_duration = mix.size(1) - chunk_start
+            else:
+                chunk_duration = chunk
+
+            mix = mix[:, chunk_start:chunk_start + chunk_duration]
+            source = source[:, chunk_start:chunk_start + chunk_duration]
+        return mix, source
+
+    def __len__(self) -> int:
+        return len(self.track_names) * self.samples * self.partitions

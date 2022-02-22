@@ -6,7 +6,7 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
-from dataset.dataset import MUSDB18Dataset
+from dataset.dataset import *
 from attention_model.model import AttentionModel
 
 def train(network, nfft, hop, train_loader, device, optimizer):
@@ -84,8 +84,11 @@ def main():
                                        duration=args.duration, samples=args.samples, random=True)
         valid_dataset = MUSDB18Dataset(base_path=args.root, subset="train", split="valid", target=args.target,
                                        duration=None, samples=1, random=False, partitions=args.partitions)
-    # elif args.dataset == "medleydb":
-    #     pass
+    elif args.dataset == "medleydb":
+        train_dataset = MedleyDBDataset(base_path=args.root, split="train", target=args.target,
+                                        duration=args.duration, samples=args.samples)
+        valid_dataset = MedleyDBDataset(base_path=args.root, split="valid", target=args.target,
+                                        duration=None, samples=1, partitions=args.partitions)
     else:
         raise NotImplementedError
 
